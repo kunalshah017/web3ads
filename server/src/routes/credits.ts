@@ -5,7 +5,7 @@ const router: Router = ExpressRouter();
 
 // ─── GET /credits/:wallet ──────────────────────────────────────────────────────
 // Returns current gas credit balance for a wallet address
-router.get("/:wallet", (req, res) => {
+router.get("/:wallet", async (req, res) => {
   const { wallet } = req.params;
 
   if (!wallet || !wallet.startsWith("0x")) {
@@ -13,7 +13,7 @@ router.get("/:wallet", (req, res) => {
     return;
   }
 
-  const credits = getCredits(wallet);
+  const credits = await getCredits(wallet);
   const creditsPerWatch = parseInt(process.env.CREDITS_PER_WATCH || "50000");
 
   res.json({

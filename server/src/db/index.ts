@@ -1,20 +1,28 @@
-import Database from "better-sqlite3";
-import type { Database as DB } from "better-sqlite3";
-import path from "path";
-import { fileURLToPath } from "url";
-import fs from "fs";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DB_PATH = process.env.DATABASE_URL || path.join(__dirname, "../../web3ads.db");
+let _supabase: SupabaseClient | null = null;
 
-const db: DB = new Database(DB_PATH);
+/**
+ * Lazy-init the Supabase client.
+ * Ensures dotenv.config() has run before we read process.env.
+ */
+export function getSupabase(): SupabaseClient {
+  if (_supabase) return _supabase;
 
-// Enable WAL mode for better concurrency
-db.pragma("journal_mode = WAL");
-db.pragma("foreign_keys = ON");
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-// Initialize schema on first run
-const schema = fs.readFileSync(path.join(__dirname, "schema.sql"), "utf-8");
-db.exec(schema);
+  if (!url || !key) {
+    throw new Error("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set in .env");
+  }
 
-export default db;
+  _supabase = createClient(url, key);
+  return _supabase;
+}
+
+// Re-export as 'supabase' getter for convenience
+export const supabase = new Proxy({} as SupabaseClient, {
+  get(_target, prop) {
+    return (getSupabase() as any)[prop];
+  },
+});

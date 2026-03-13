@@ -33,3 +33,5 @@ coverage/
 
 # Extension build
 extension/dist-zip/
+.claude/aa.txt
+docs/

@@ -63,9 +63,8 @@ router.post("/watched", async (req, res) => {
     req.socket.remoteAddress ||
     "unknown";
 
-  // Lazy-import to avoid circular init on startup
   const { awardCredits } = await import("../services/credits.js");
-  const result = awardCredits(wallet, adId, rawIp);
+  const result = await awardCredits(wallet, adId, rawIp);
 
   if (!result.ok) {
     res.status(429).json({ ok: false, error: result.reason });
