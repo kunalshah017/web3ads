@@ -1,0 +1,28 @@
+{
+  "name": "web3ads",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Web3Ads - Client, Server, and Browser Extension",
+  "scripts": {
+    "dev": "pnpm --parallel -r dev",
+    "dev:client": "pnpm --filter client dev",
+    "dev:server": "pnpm --filter server dev",
+    "dev:extension": "pnpm --filter chrome-extension-boilerplate-react-vite dev",
+    "build": "pnpm --parallel -r build",
+    "build:client": "pnpm --filter client build",
+    "build:server": "pnpm --filter server build",
+    "build:extension": "pnpm --filter chrome-extension-boilerplate-react-vite build",
+    "typecheck": "pnpm --parallel -r typecheck",
+    "clean": "pnpm --parallel -r clean"
+  },
+  "keywords": [
+    "web3",
+    "ads",
+    "chrome-extension",
+    "react",
+    "express"
+  ],
+  "author": "",
+  "license": "MIT",
+  "packageManager": "pnpm@10.17.1"
+}

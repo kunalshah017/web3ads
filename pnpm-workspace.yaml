@@ -1,0 +1,7 @@
+packages:
+  - "client"
+  - "server"
+  - "extension"
+  - "extension/packages/*"
+  - "extension/pages/*"
+  - "extension/chrome-extension"
