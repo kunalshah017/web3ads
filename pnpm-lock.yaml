@@ -661,6 +661,25 @@ importers:
         specifier: ^5.0.0
         version: 5.9.3
 
+  packages/openclaw-skill:
+    dependencies:
+      dotenv:
+        specifier: ^16.4.0
+        version: 16.6.1
+      viem:
+        specifier: ^2.21.0
+        version: 2.47.2(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@6.0.6)(zod@4.3.6)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.19.15
+      tsx:
+        specifier: ^4.19.0
+        version: 4.21.0
+      typescript:
+        specifier: ^5.6.0
+        version: 5.9.3
+
   packages/react:
     devDependencies:
       '@types/react':
@@ -10703,7 +10722,7 @@ snapshots:
   '@types/body-parser@1.19.6':
     dependencies:
       '@types/connect': 3.4.38
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/chai@5.2.3':
     dependencies:
@@ -10717,13 +10736,13 @@ snapshots:
 
   '@types/connect@3.4.38':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/cookiejar@2.1.5': {}
 
   '@types/cors@2.8.19':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/debug@4.1.12':
     dependencies:
@@ -10752,7 +10771,7 @@ snapshots:
 
   '@types/express-serve-static-core@5.1.1':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
       '@types/qs': 6.15.0
       '@types/range-parser': 1.2.7
       '@types/send': 1.2.1
@@ -10783,7 +10802,7 @@ snapshots:
 
   '@types/mute-stream@0.0.4':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/node@12.20.55': {}
 
@@ -10809,13 +10828,13 @@ snapshots:
 
   '@types/pg@8.11.11':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
       pg-protocol: 1.13.0
       pg-types: 4.1.0
 
   '@types/pg@8.18.0':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
       pg-protocol: 1.13.0
       pg-types: 2.2.0
 
@@ -10835,12 +10854,12 @@ snapshots:
 
   '@types/send@1.2.1':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/serve-static@2.2.0':
     dependencies:
       '@types/http-errors': 2.0.5
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/snarkjs@0.7.9': {}
 
@@ -10848,7 +10867,7 @@ snapshots:
     dependencies:
       '@types/cookiejar': 2.1.5
       '@types/methods': 1.1.4
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
       form-data: 4.0.5
 
   '@types/supertest@6.0.3':
@@ -10864,7 +10883,7 @@ snapshots:
 
   '@types/ws@7.4.7':
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
 
   '@types/ws@8.18.1':
     dependencies:
@@ -14450,7 +14469,7 @@ snapshots:
 
   jest-worker@27.5.1:
     dependencies:
-      '@types/node': 25.5.0
+      '@types/node': 22.19.15
       merge-stream: 2.0.0
       supports-color: 8.1.1
 
