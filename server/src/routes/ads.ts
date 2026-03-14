@@ -1,6 +1,11 @@
 import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
-import { AdType, CampaignStatus } from "@prisma/client";
+import pkg from "@prisma/client";
+import type {
+  AdType as AdTypeT,
+  CampaignStatus as CampaignStatusT,
+} from "@prisma/client";
+const { AdType, CampaignStatus } = pkg;
 import crypto from "crypto";
 import { signImpression, isBlockchainEnabled } from "../blockchain/index.js";
 
@@ -42,8 +47,8 @@ router.get("/serve", async (req, res) => {
 
     // Test mode: return mock ads for development/testing
     if (testMode === "true") {
-      const adType = (type as AdType) || AdType.BANNER;
-      const mockAds: Record<AdType, { width: number; height: number }> = {
+      const adType = (type as AdTypeT) || AdType.BANNER;
+      const mockAds: Record<AdTypeT, { width: number; height: number }> = {
         [AdType.BANNER]: { width: 728, height: 90 },
         [AdType.SQUARE]: { width: 300, height: 300 },
         [AdType.SIDEBAR]: { width: 300, height: 600 },
@@ -70,8 +75,8 @@ router.get("/serve", async (req, res) => {
       budget: { gt: prisma.campaign.fields.spent },
     };
 
-    if (type && Object.values(AdType).includes(type as AdType)) {
-      where.adType = type as AdType;
+    if (type && Object.values(AdType).includes(type as AdTypeT)) {
+      where.adType = type as AdTypeT;
     }
 
     if (category && typeof category === "string") {

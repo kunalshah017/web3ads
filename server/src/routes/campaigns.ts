@@ -1,6 +1,8 @@
 import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
-import { AdType, CampaignStatus } from "@prisma/client";
+import pkg from "@prisma/client";
+import type { AdType as AdTypeT, CampaignStatus as CampaignStatusT } from "@prisma/client";
+const { AdType, CampaignStatus } = pkg;
 import {
   x402,
   getX402Payment,
@@ -10,7 +12,7 @@ import {
 const router: IRouter = Router();
 
 // Demo CPM rates (500x inflated for hackathon)
-const CPM_RATES: Record<AdType, number> = {
+const CPM_RATES: Record<AdTypeT, number> = {
   BANNER: 0.5,
   SQUARE: 0.75,
   SIDEBAR: 1.0,
@@ -131,7 +133,7 @@ router.post("/", async (req, res) => {
     });
 
     // Default CPM rates by ad type
-    const defaultCpmRates: Record<AdType, number> = {
+    const defaultCpmRates: Record<AdTypeT, number> = {
       BANNER: 2,
       SQUARE: 3,
       SIDEBAR: 4,
@@ -143,11 +145,11 @@ router.post("/", async (req, res) => {
         advertiserId: advertiser.id,
         name,
         description,
-        adType: adType as AdType,
+        adType: adType as AdTypeT,
         category,
         mediaUrl,
         targetUrl,
-        cpmRate: cpmRate || defaultCpmRates[adType as AdType],
+        cpmRate: cpmRate || defaultCpmRates[adType as AdTypeT],
         budget: parseFloat(budget),
         status: CampaignStatus.DRAFT,
       },
@@ -447,11 +449,11 @@ router.post(
           advertiserId: advertiser.id,
           name,
           description,
-          adType: adType as AdType,
+          adType: adType as AdTypeT,
           category,
           mediaUrl,
           targetUrl,
-          cpmRate: cpmRate || CPM_RATES[adType as AdType],
+          cpmRate: cpmRate || CPM_RATES[adType as AdTypeT],
           budget: parseFloat(budget),
           status: CampaignStatus.ACTIVE, // Immediately active since it's funded
         },
