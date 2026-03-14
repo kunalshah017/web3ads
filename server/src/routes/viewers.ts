@@ -15,15 +15,102 @@ router.post("/register", async (req, res) => {
     // Check if commitment already exists
     const existingViewer = await prisma.viewer.findUnique({
       where: { semaphoreCommitment },
+      include: { user: true },
     });
 
     if (existingViewer) {
-      return res.status(409).json({
-        error: "This semaphore commitment is already registered",
+      // Commitment exists - check if it's the same wallet trying to re-register
+      const existingWallet = existingViewer.user.walletAddress;
+      const isAnonymous = existingWallet.startsWith("anon_");
+
+      if (walletAddress) {
+        const normalizedWallet = walletAddress.toLowerCase();
+
+        if (!isAnonymous && existingWallet === normalizedWallet) {
+          // Same wallet, same commitment - return existing (idempotent)
+          return res.json({
+            viewer: {
+              id: existingViewer.id,
+              commitment: existingViewer.semaphoreCommitment,
+              walletAddress: existingWallet,
+              isNew: false,
+            },
+          });
+        }
+
+        if (isAnonymous) {
+          // Anonymous viewer wants to link wallet - update the placeholder
+          const existingUser = await prisma.user.findUnique({
+            where: { walletAddress: normalizedWallet },
+          });
+
+          if (existingUser) {
+            // Wallet already has a user - check if they have a viewer
+            const walletViewer = await prisma.viewer.findUnique({
+              where: { userId: existingUser.id },
+            });
+
+            if (walletViewer) {
+              // Wallet already has a viewer - can't link to this commitment
+              return res.status(409).json({
+                error:
+                  "This wallet already has a viewer profile. Clear your browser data to start fresh.",
+              });
+            }
+
+            // Transfer viewer to existing user and delete placeholder
+            const oldUserId = existingViewer.userId;
+            const viewer = await prisma.viewer.update({
+              where: { id: existingViewer.id },
+              data: { userId: existingUser.id },
+            });
+            await prisma.user.delete({ where: { id: oldUserId } });
+
+            return res.json({
+              viewer: {
+                id: viewer.id,
+                commitment: viewer.semaphoreCommitment,
+                walletAddress: normalizedWallet,
+                isNew: false,
+              },
+            });
+          }
+
+          // Update placeholder user with real wallet
+          await prisma.user.update({
+            where: { id: existingViewer.userId },
+            data: { walletAddress: normalizedWallet },
+          });
+
+          return res.json({
+            viewer: {
+              id: existingViewer.id,
+              commitment: existingViewer.semaphoreCommitment,
+              walletAddress: normalizedWallet,
+              isNew: false,
+            },
+          });
+        }
+
+        // Different wallet, non-anonymous commitment - conflict
+        return res.status(409).json({
+          error:
+            "This browser's identity is linked to a different wallet. Clear browser data to start fresh.",
+        });
+      }
+
+      // No wallet provided, commitment exists - return existing
+      return res.json({
+        viewer: {
+          id: existingViewer.id,
+          commitment: existingViewer.semaphoreCommitment,
+          walletAddress: isAnonymous ? null : existingWallet,
+          isNew: false,
+        },
       });
     }
 
-    // If wallet provided, link to user
+    // Commitment doesn't exist - check if wallet has an existing viewer
     let userId: string | null = null;
     if (walletAddress) {
       const user = await prisma.user.upsert({
@@ -33,13 +120,13 @@ router.post("/register", async (req, res) => {
       });
       userId = user.id;
 
-      // Check if user already has a viewer profile
+      // Check if user already has a viewer profile (different browser scenario)
       const existingUserViewer = await prisma.viewer.findUnique({
         where: { userId: user.id },
       });
 
       if (existingUserViewer) {
-        // Update existing viewer with new commitment
+        // Update existing viewer with new commitment from this browser
         const viewer = await prisma.viewer.update({
           where: { userId: user.id },
           data: { semaphoreCommitment },
@@ -49,8 +136,9 @@ router.post("/register", async (req, res) => {
           viewer: {
             id: viewer.id,
             commitment: viewer.semaphoreCommitment,
-            walletAddress,
+            walletAddress: walletAddress.toLowerCase(),
             isNew: false,
+            message: "Updated viewer identity for this browser",
           },
         });
       }
