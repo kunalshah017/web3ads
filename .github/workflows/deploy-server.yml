@@ -1,6 +1,7 @@
 name: Deploy Server to Azure App Service
 
 on:
+    workflow_dispatch:
     push:
         branches:
             - main
