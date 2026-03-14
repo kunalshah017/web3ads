@@ -13,9 +13,7 @@ interface ViewerStatus {
 
 const Popup = () => {
   const [status, setStatus] = useState<ViewerStatus | null>(null);
-  const [walletInput, setWalletInput] = useState("");
-  const [isLinking, setIsLinking] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     // Fetch status from background script
@@ -27,29 +25,16 @@ const Popup = () => {
     });
   }, []);
 
-  const handleLinkWallet = async () => {
-    if (!walletInput || !walletInput.startsWith("0x")) {
-      setError("Please enter a valid wallet address");
-      return;
-    }
+  const handleLinkWallet = () => {
+    // Open the viewer page on our website to link wallet
+    chrome.tabs.create({ url: "https://web3ads.wtf/viewer" });
+  };
 
-    setIsLinking(true);
-    setError(null);
-
-    chrome.runtime.sendMessage(
-      { type: "LINK_WALLET", walletAddress: walletInput.toLowerCase() },
-      (response) => {
-        setIsLinking(false);
-        if (response?.success) {
-          setStatus((prev) =>
-            prev ? { ...prev, walletAddress: walletInput, isRegistered: true } : null,
-          );
-          setWalletInput("");
-        } else {
-          setError("Failed to link wallet. Try again.");
-        }
-      },
-    );
+  const copyCommitment = async () => {
+    if (!status) return;
+    await navigator.clipboard.writeText(status.commitment);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
   };
 
   if (!status) {
@@ -96,18 +81,11 @@ const Popup = () => {
             <span className="address">{`${status.walletAddress.slice(0, 6)}...${status.walletAddress.slice(-4)}`}</span>
           </div>
         ) : (
-          <div className="wallet-link-form">
-            <input
-              type="text"
-              placeholder="0x..."
-              value={walletInput}
-              onChange={(e) => setWalletInput(e.target.value)}
-              className="wallet-input"
-            />
-            <button onClick={handleLinkWallet} disabled={isLinking} className="link-btn">
-              {isLinking ? "LINKING..." : "LINK WALLET"}
+          <div className="wallet-link-cta">
+            <p className="link-info">Connect your wallet on our website to start earning rewards</p>
+            <button onClick={handleLinkWallet} className="link-btn">
+              LINK WALLET ON WEBSITE →
             </button>
-            {error && <div className="error">{error}</div>}
           </div>
         )}
       </div>
@@ -130,9 +108,9 @@ const Popup = () => {
 
       {/* Footer */}
       <div className="footer">
-        <span className="commitment">
-          ID: {status.commitment.slice(0, 8)}...{status.commitment.slice(-4)}
-        </span>
+        <button className="commitment-btn" onClick={copyCommitment}>
+          {copied ? "COPIED!" : `ID: ${status.commitment.slice(0, 8)}...${status.commitment.slice(-4)}`}
+        </button>
       </div>
     </div>
   );

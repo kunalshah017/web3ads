@@ -43,13 +43,15 @@ vi.mock("../db/index.js", () => ({
       create: vi.fn(),
       findMany: vi.fn(),
     },
-    $transaction: vi.fn((callback) => callback({
-      publisher: {
-        update: vi.fn(),
-      },
-      viewer: {
-        update: vi.fn(),
-      },
-    })),
+    $transaction: vi.fn((callback) =>
+      callback({
+        publisher: {
+          update: vi.fn(),
+        },
+        viewer: {
+          update: vi.fn(),
+        },
+      }),
+    ),
   },
 }));

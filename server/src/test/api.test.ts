@@ -146,17 +146,15 @@ describe("Campaigns API", () => {
       createdAt: new Date(),
     });
 
-    const res = await request(app)
-      .post("/api/campaigns")
-      .send({
-        walletAddress: "0x1234567890123456789012345678901234567890",
-        name: "New Campaign",
-        adType: "BANNER",
-        budget: 500,
-        cpmRate: 2,
-        mediaUrl: "https://example.com/ad.jpg",
-        targetUrl: "https://example.com",
-      });
+    const res = await request(app).post("/api/campaigns").send({
+      walletAddress: "0x1234567890123456789012345678901234567890",
+      name: "New Campaign",
+      adType: "BANNER",
+      budget: 500,
+      cpmRate: 2,
+      mediaUrl: "https://example.com/ad.jpg",
+      targetUrl: "https://example.com",
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.campaign.name).toBe("New Campaign");
@@ -246,12 +244,10 @@ describe("Publishers API", () => {
       createdAt: new Date(),
     });
 
-    const res = await request(app)
-      .post("/api/publishers/register")
-      .send({
-        walletAddress: "0x1234567890123456789012345678901234567890",
-        websiteUrl: "https://example.com",
-      });
+    const res = await request(app).post("/api/publishers/register").send({
+      walletAddress: "0x1234567890123456789012345678901234567890",
+      websiteUrl: "https://example.com",
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.publisher).toBeDefined();
@@ -290,11 +286,9 @@ describe("Viewers API", () => {
       semaphoreCommitment: "1234567890123456789012345678901234567890",
     });
 
-    const res = await request(app)
-      .post("/api/viewers/register")
-      .send({
-        semaphoreCommitment: "1234567890123456789012345678901234567890",
-      });
+    const res = await request(app).post("/api/viewers/register").send({
+      semaphoreCommitment: "1234567890123456789012345678901234567890",
+    });
 
     expect(res.status).toBe(201);
     expect(res.body.viewer).toBeDefined();

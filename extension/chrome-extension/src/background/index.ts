@@ -1,5 +1,5 @@
-import "webextension-polyfill";
-import { Identity } from "@semaphore-protocol/core";
+import 'webextension-polyfill';
+import { Identity } from '@semaphore-protocol/core';
 
 /**
  * Web3Ads Background Service Worker
@@ -10,15 +10,15 @@ import { Identity } from "@semaphore-protocol/core";
 
 // Storage keys
 const STORAGE_KEYS = {
-  IDENTITY_SECRET: "web3ads_identity_secret",
-  WALLET_ADDRESS: "web3ads_wallet_address",
-  IS_REGISTERED: "web3ads_is_registered",
-  TOTAL_EARNINGS: "web3ads_total_earnings",
-  VIEWED_ADS: "web3ads_viewed_ads",
+  IDENTITY_SECRET: 'web3ads_identity_secret',
+  WALLET_ADDRESS: 'web3ads_wallet_address',
+  IS_REGISTERED: 'web3ads_is_registered',
+  TOTAL_EARNINGS: 'web3ads_total_earnings',
+  VIEWED_ADS: 'web3ads_viewed_ads',
 };
 
 // API URL
-const API_URL = process.env.WEB3ADS_API_URL || "http://localhost:3001";
+const API_URL = process.env.WEB3ADS_API_URL || 'http://localhost:3001';
 
 /**
  * Initialize or restore Semaphore identity
@@ -59,9 +59,9 @@ async function generateNullifier(adId: string): Promise<string> {
   // This creates a unique, deterministic nullifier per ad per identity
   const encoder = new TextEncoder();
   const data = encoder.encode(adId + identity.commitment.toString());
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
   const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map((b) => b.toString(16).padStart(2, "0")).join("");
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
@@ -72,8 +72,8 @@ async function registerViewer(walletAddress?: string): Promise<boolean> {
     const commitment = await getCommitment();
 
     const response = await fetch(`${API_URL}/api/viewers/register`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         semaphoreCommitment: commitment,
         walletAddress,
@@ -90,7 +90,7 @@ async function registerViewer(walletAddress?: string): Promise<boolean> {
 
     return false;
   } catch (error) {
-    console.error("[Web3Ads] Registration failed:", error);
+    console.error('[Web3Ads] Registration failed:', error);
     return false;
   }
 }
@@ -121,7 +121,7 @@ async function trackViewedAd(adId: string): Promise<void> {
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   (async () => {
     switch (message.type) {
-      case "GET_PROOF_DATA": {
+      case 'GET_PROOF_DATA': {
         // Content script requesting proof data for impression
         const commitment = await getCommitment();
         const nullifier = await generateNullifier(message.adId);
@@ -134,7 +134,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         break;
       }
 
-      case "GET_STATUS": {
+      case 'GET_STATUS': {
         // Popup requesting current status
         const identity = await getOrCreateIdentity();
         const storage = await chrome.storage.local.get([
@@ -154,22 +154,24 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         break;
       }
 
-      case "REGISTER": {
+      case 'REGISTER': {
         // User registering from popup
         const success = await registerViewer(message.walletAddress);
-        sendResponse({ success });
+        const commitment = await getCommitment();
+        sendResponse({ success, commitment });
         break;
       }
 
-      case "LINK_WALLET": {
-        // Linking wallet to existing identity
+      case 'LINK_WALLET': {
+        // Linking wallet to existing identity (from website)
         const success = await registerViewer(message.walletAddress);
-        sendResponse({ success });
+        const commitment = await getCommitment();
+        sendResponse({ success, commitment });
         break;
       }
 
       default:
-        sendResponse({ error: "Unknown message type" });
+        sendResponse({ error: 'Unknown message type' });
     }
   })();
 
@@ -179,15 +181,15 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
-  console.log("[Web3Ads] Extension installed");
+  console.log('[Web3Ads] Extension installed');
 
   // Create identity immediately
   const identity = await getOrCreateIdentity();
-  console.log("[Web3Ads] Identity commitment:", identity.commitment.toString());
+  console.log('[Web3Ads] Identity commitment:', identity.commitment.toString());
 
   // Set extension badge
-  chrome.action.setBadgeBackgroundColor({ color: "#ff3e00" });
-  chrome.action.setBadgeText({ text: "NEW" });
+  chrome.action.setBadgeBackgroundColor({ color: '#ff3e00' });
+  chrome.action.setBadgeText({ text: 'NEW' });
 });
 
-console.log("[Web3Ads] Background service worker loaded");
+console.log('[Web3Ads] Background service worker loaded');

@@ -190,7 +190,7 @@ router.get("/embed-code", async (req, res) => {
     }
 
     const embedCode = `<!-- Web3Ads -->
-<script src="https://cdn.web3ads.io/embed.js"></script>
+<script src="https://cdn.web3ads.wtf/embed.js"></script>
 <div 
   data-web3ads
   data-publisher="${walletAddress}"

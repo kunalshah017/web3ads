@@ -52,7 +52,7 @@ export function Web3Ad({
             setAd({
                 campaignId: "test-campaign",
                 mediaUrl: `https://placehold.co/${dimensions.width}x${dimensions.height}/1a1a1a/ff3e00?text=Web3Ads+${type.toUpperCase()}`,
-                targetUrl: "https://web3ads.io",
+                targetUrl: "https://web3ads.wtf",
                 type,
                 impressionToken: "test-token",
             });

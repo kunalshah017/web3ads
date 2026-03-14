@@ -3,7 +3,7 @@ import type { AdData, AdType, ImpressionPayload } from "./types";
 /**
  * Default API URL - can be overridden with setApiUrl()
  */
-export let WEB3ADS_API_URL = "https://api.web3ads.io";
+export let WEB3ADS_API_URL = "https://api.web3ads.wtf";
 
 /**
  * Set custom API URL (for self-hosted or testing)
