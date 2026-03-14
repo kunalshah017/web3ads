@@ -1,0 +1,207 @@
+// Web3Ads Platform - Prisma Schema
+// Database: Supabase PostgreSQL
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+// ENUMS
+// ============================================
+
+enum AdType {
+  BANNER      // 728x90 - Footer banner
+  SQUARE      // 300x300 - Square ad
+  SIDEBAR     // 300x600 - Sidebar/skyscraper
+  INTERSTITIAL // Full screen overlay
+}
+
+enum CampaignStatus {
+  DRAFT
+  ACTIVE
+  PAUSED
+  COMPLETED
+  CANCELLED
+}
+
+enum UserRole {
+  ADVERTISER
+  PUBLISHER
+  VIEWER
+}
+
+// ============================================
+// CORE MODELS
+// ============================================
+
+model User {
+  id            String    @id @default(cuid())
+  walletAddress String    @unique @map("wallet_address")
+  createdAt     DateTime  @default(now()) @map("created_at")
+  updatedAt     DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  advertiser    Advertiser?
+  publisher     Publisher?
+  viewer        Viewer?
+  
+  @@map("users")
+}
+
+model Advertiser {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  companyName     String?   @map("company_name")
+  totalDeposited  Decimal   @default(0) @map("total_deposited") @db.Decimal(18, 6)
+  totalSpent      Decimal   @default(0) @map("total_spent") @db.Decimal(18, 6)
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  campaigns       Campaign[]
+  
+  @@map("advertisers")
+}
+
+model Publisher {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  websiteUrl      String?   @map("website_url")
+  totalViews      Int       @default(0) @map("total_views")
+  totalEarnings   Decimal   @default(0) @map("total_earnings") @db.Decimal(18, 6)
+  pendingBalance  Decimal   @default(0) @map("pending_balance") @db.Decimal(18, 6)
+  claimedBalance  Decimal   @default(0) @map("claimed_balance") @db.Decimal(18, 6)
+  isVerified      Boolean   @default(false) @map("is_verified")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  impressions     Impression[]
+  
+  @@map("publishers")
+}
+
+model Viewer {
+  id                    String    @id @default(cuid())
+  userId                String    @unique @map("user_id")
+  semaphoreCommitment   String?   @unique @map("semaphore_commitment")
+  totalAdsViewed        Int       @default(0) @map("total_ads_viewed")
+  totalEarnings         Decimal   @default(0) @map("total_earnings") @db.Decimal(18, 6)
+  pendingBalance        Decimal   @default(0) @map("pending_balance") @db.Decimal(18, 6)
+  claimedBalance        Decimal   @default(0) @map("claimed_balance") @db.Decimal(18, 6)
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+  
+  // Relations
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  viewedImpressions     Impression[]
+  
+  @@map("viewers")
+}
+
+// ============================================
+// CAMPAIGN & ADS
+// ============================================
+
+model Campaign {
+  id              String          @id @default(cuid())
+  advertiserId    String          @map("advertiser_id")
+  name            String
+  description     String?
+  adType          AdType          @map("ad_type")
+  category        String?         // e.g., "defi", "nft", "gaming"
+  mediaUrl        String          @map("media_url")
+  targetUrl       String          @map("target_url")
+  cpmRate         Decimal         @map("cpm_rate") @db.Decimal(18, 6) // Cost per 1000 impressions in USDC
+  budget          Decimal         @db.Decimal(18, 6) // Total budget in USDC
+  spent           Decimal         @default(0) @db.Decimal(18, 6) // Amount spent so far
+  status          CampaignStatus  @default(DRAFT)
+  startDate       DateTime?       @map("start_date")
+  endDate         DateTime?       @map("end_date")
+  createdAt       DateTime        @default(now()) @map("created_at")
+  updatedAt       DateTime        @updatedAt @map("updated_at")
+  
+  // Relations
+  advertiser      Advertiser      @relation(fields: [advertiserId], references: [id], onDelete: Cascade)
+  impressions     Impression[]
+  
+  @@index([status, adType])
+  @@index([category])
+  @@map("campaigns")
+}
+
+model Impression {
+  id                  String    @id @default(cuid())
+  campaignId          String    @map("campaign_id")
+  publisherId         String    @map("publisher_id")
+  viewerId            String?   @map("viewer_id") // Null if viewer doesn't have extension
+  
+  // Tracking data
+  ipHash              String?   @map("ip_hash") // Hashed IP for fraud prevention
+  userAgentHash       String?   @map("user_agent_hash")
+  semaphoreNullifier  String?   @unique @map("semaphore_nullifier") // zkProof nullifier
+  
+  // Revenue split (stored at time of impression)
+  costPerImpression   Decimal   @map("cost_per_impression") @db.Decimal(18, 6)
+  publisherEarning    Decimal   @map("publisher_earning") @db.Decimal(18, 6)
+  viewerEarning       Decimal   @default(0) @map("viewer_earning") @db.Decimal(18, 6)
+  platformFee         Decimal   @map("platform_fee") @db.Decimal(18, 6)
+  
+  // Verification
+  isVerified          Boolean   @default(false) @map("is_verified")
+  hasExtension        Boolean   @default(false) @map("has_extension")
+  viewDuration        Int?      @map("view_duration") // Milliseconds
+  
+  createdAt           DateTime  @default(now()) @map("created_at")
+  
+  // Relations
+  campaign            Campaign  @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  publisher           Publisher @relation(fields: [publisherId], references: [id], onDelete: Cascade)
+  viewer              Viewer?   @relation(fields: [viewerId], references: [id], onDelete: SetNull)
+  
+  @@index([campaignId, createdAt])
+  @@index([publisherId, createdAt])
+  @@index([viewerId, createdAt])
+  @@map("impressions")
+}
+
+// ============================================
+// PAYOUTS & TRANSACTIONS
+// ============================================
+
+model Payout {
+  id              String    @id @default(cuid())
+  walletAddress   String    @map("wallet_address")
+  amount          Decimal   @db.Decimal(18, 6)
+  txHash          String?   @unique @map("tx_hash")
+  status          String    @default("pending") // pending, processing, completed, failed
+  payoutType      String    @map("payout_type") // publisher, viewer
+  createdAt       DateTime  @default(now()) @map("created_at")
+  processedAt     DateTime? @map("processed_at")
+  
+  @@index([walletAddress, status])
+  @@map("payouts")
+}
+
+// ============================================
+// ANTI-FRAUD
+// ============================================
+
+model RateLimit {
+  id              String    @id @default(cuid())
+  identifier      String    // IP hash or fingerprint
+  identifierType  String    @map("identifier_type") // ip, fingerprint, semaphore
+  campaignId      String?   @map("campaign_id")
+  count           Int       @default(1)
+  windowStart     DateTime  @map("window_start")
+  
+  @@unique([identifier, identifierType, campaignId, windowStart])
+  @@index([windowStart])
+  @@map("rate_limits")
+}
