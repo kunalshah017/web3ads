@@ -41,8 +41,8 @@ importers:
         specifier: ^3.5.0
         version: 3.5.0(@metamask/sdk@0.33.1(bufferutil@4.1.0)(utf-8-validate@5.0.10))(@tanstack/query-core@5.90.20)(@tanstack/react-query@5.90.21(react@19.2.4))(@types/react@19.2.14)(ox@0.14.0(typescript@5.9.3)(zod@4.3.6))(react@19.2.4)(typescript@5.9.3)(viem@2.47.2(bufferutil@4.1.0)(typescript@5.9.3)(utf-8-validate@5.0.10)(zod@4.3.6))
       web3ads-react:
-        specifier: workspace:*
-        version: link:../packages/react
+        specifier: ^0.1.0
+        version: 0.1.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4)
     devDependencies:
       '@eslint/js':
         specifier: ^9.39.4
@@ -6416,6 +6416,12 @@ packages:
   web-worker@1.5.0:
     resolution: {integrity: sha512-RiMReJrTAiA+mBjGONMnjVDP2u3p9R1vkcGz6gDIrOMT3oGuYwX2WRMYI9ipkphSuE5XKEhydbhNEJh4NY9mlw==}
 
+  web3ads-react@0.1.0:
+    resolution: {integrity: sha512-aYeEzMfxBqNMbTmh2ips8TYsLAXKfNsgWY8JiMclrIMNUhHsQIOTkE3p+yyHqh/imHmhHmZQjdpf6c6OAH1WUA==}
+    peerDependencies:
+      react: ^18.0.0 || ^19.0.0
+      react-dom: ^18.0.0 || ^19.0.0
+
   webextension-polyfill@0.10.0:
     resolution: {integrity: sha512-c5s35LgVa5tFaHhrZDnr3FpQpjj1BB+RXhLTYUxGqBVN460HkbM8TBtEqdXWbpTKfzwCcjAZVF7zXCYSKtcp9g==}
 
@@ -12603,6 +12609,11 @@ snapshots:
   web-worker@1.2.0: {}
 
   web-worker@1.5.0: {}
+
+  web3ads-react@0.1.0(react-dom@19.2.4(react@19.2.4))(react@19.2.4):
+    dependencies:
+      react: 19.2.4
+      react-dom: 19.2.4(react@19.2.4)
 
   webextension-polyfill@0.10.0: {}
 
