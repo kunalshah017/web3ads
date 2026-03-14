@@ -21,10 +21,23 @@ const WEB3ADS_CORE_ABI = parseAbi([
   "function campaigns(address advertiser, bytes32 campaignId) view returns (address, uint8, uint256, uint256, uint256, uint8, uint256)",
 ]);
 
+// V2 Contract ABI (ETH-based with gasless support)
+const WEB3ADS_CORE_V2_ABI = parseAbi([
+  "function recordImpression(address advertiser, bytes32 campaignId, address publisher, bytes32 viewerCommitment, bytes32 nullifier, bytes signature) external",
+  "function withdrawViewer(bytes32 commitment, address recipient, bytes proof) external",
+  "function withdrawPublisher() external",
+  "function withdrawPublisherTo(address publisher, address recipient, bytes proof) external",
+  "function getPublisherBalance(address publisher) view returns (uint256)",
+  "function getViewerBalance(bytes32 commitment) view returns (uint256)",
+  "function campaigns(address advertiser, bytes32 campaignId) view returns (address, uint8, uint256, uint256, uint256, uint8, uint256)",
+]);
+
 // Environment variables
 const BACKEND_SIGNER_PRIVATE_KEY = process.env
   .BACKEND_SIGNER_PRIVATE_KEY as `0x${string}`;
 const WEB3ADS_CORE_ADDRESS = process.env.WEB3ADS_CORE_ADDRESS as `0x${string}`;
+const WEB3ADS_CORE_V2_ADDRESS = process.env
+  .WEB3ADS_CORE_V2_ADDRESS as `0x${string}`;
 const BASE_SEPOLIA_RPC_URL =
   process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
 
@@ -223,10 +236,144 @@ export async function signViewerWithdrawal(params: {
 }
 
 /**
+ * Withdraw viewer earnings on-chain (backend pays gas)
+ * @param commitment Viewer's semaphore commitment
+ * @param recipient Address to receive the ETH
+ */
+export async function withdrawViewerOnChain(params: {
+  commitment: `0x${string}`;
+  recipient: `0x${string}`;
+}): Promise<Hash | null> {
+  if (!signerAccount || !WEB3ADS_CORE_V2_ADDRESS) {
+    console.warn("[Blockchain] Cannot withdraw - V2 contract not configured");
+    return null;
+  }
+
+  try {
+    const { commitment, recipient } = params;
+
+    // Sign the withdrawal
+    const signature = await signViewerWithdrawal({ commitment, recipient });
+    if (!signature) return null;
+
+    // Create wallet client
+    const walletClient = createWalletClient({
+      account: signerAccount,
+      chain: baseSepolia,
+      transport: http(BASE_SEPOLIA_RPC_URL),
+    });
+
+    // Execute withdrawal (backend pays gas)
+    const hash = await walletClient.writeContract({
+      address: WEB3ADS_CORE_V2_ADDRESS,
+      abi: WEB3ADS_CORE_V2_ABI,
+      functionName: "withdrawViewer",
+      args: [commitment, recipient, signature],
+      chain: baseSepolia,
+    });
+
+    console.log(`[Blockchain] Viewer withdrawal executed: ${hash}`);
+    return hash;
+  } catch (error) {
+    console.error("[Blockchain] Failed to execute viewer withdrawal:", error);
+    return null;
+  }
+}
+
+/**
+ * Sign a publisher withdrawal request
+ * The signature proves the backend authorized this withdrawal
+ */
+export async function signPublisherWithdrawal(params: {
+  publisher: `0x${string}`;
+  recipient: `0x${string}`;
+}): Promise<`0x${string}` | null> {
+  if (!signerAccount) {
+    console.warn("[Blockchain] Cannot sign - signer not configured");
+    return null;
+  }
+
+  const { publisher, recipient } = params;
+
+  // Create message hash (must match contract's verification)
+  const messageHash = keccak256(
+    encodePacked(["address", "address"], [publisher, recipient]),
+  );
+
+  // Sign with Ethereum Signed Message prefix
+  const signature = await signerAccount.signMessage({
+    message: { raw: messageHash },
+  });
+
+  return signature;
+}
+
+/**
+ * Withdraw publisher earnings on-chain to custom recipient (backend pays gas)
+ * @param publisher Publisher's wallet address
+ * @param recipient Address to receive the ETH
+ */
+export async function withdrawPublisherOnChain(params: {
+  publisher: `0x${string}`;
+  recipient: `0x${string}`;
+}): Promise<Hash | null> {
+  if (!signerAccount || !WEB3ADS_CORE_V2_ADDRESS) {
+    console.warn("[Blockchain] Cannot withdraw - V2 contract not configured");
+    return null;
+  }
+
+  try {
+    const { publisher, recipient } = params;
+
+    // Sign the withdrawal
+    const signature = await signPublisherWithdrawal({ publisher, recipient });
+    if (!signature) return null;
+
+    // Create wallet client
+    const walletClient = createWalletClient({
+      account: signerAccount,
+      chain: baseSepolia,
+      transport: http(BASE_SEPOLIA_RPC_URL),
+    });
+
+    // Execute withdrawal to custom recipient (backend pays gas)
+    const hash = await walletClient.writeContract({
+      address: WEB3ADS_CORE_V2_ADDRESS,
+      abi: WEB3ADS_CORE_V2_ABI,
+      functionName: "withdrawPublisherTo",
+      args: [publisher, recipient, signature],
+      chain: baseSepolia,
+    });
+
+    console.log(`[Blockchain] Publisher withdrawal executed: ${hash}`);
+    return hash;
+  } catch (error) {
+    console.error(
+      "[Blockchain] Failed to execute publisher withdrawal:",
+      error,
+    );
+    return null;
+  }
+}
+
+/**
  * Check if blockchain integration is enabled
  */
 export function isBlockchainEnabled(): boolean {
   return !!(signerAccount && WEB3ADS_CORE_ADDRESS);
 }
 
-export { signerAccount, WEB3ADS_CORE_ADDRESS, WEB3ADS_CORE_ABI };
+/**
+ * Check if V2 blockchain integration is enabled
+ */
+export function isBlockchainV2Enabled(): boolean {
+  return !!(signerAccount && WEB3ADS_CORE_V2_ADDRESS);
+}
+
+export {
+  signerAccount,
+  WEB3ADS_CORE_ADDRESS,
+  WEB3ADS_CORE_ABI,
+  WEB3ADS_CORE_V2_ADDRESS,
+  WEB3ADS_CORE_V2_ABI,
+};

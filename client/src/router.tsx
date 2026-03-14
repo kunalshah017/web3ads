@@ -6,6 +6,8 @@ import { PublisherPage } from "./pages/Publisher";
 import { ViewerPage } from "./pages/Viewer";
 import { DashboardPage } from "./pages/Dashboard";
 import { TestPage } from "./pages/Test";
+import Info from "./pages/Info";
+import { GaslessPaymentPage } from "./pages/GaslessPayment";
 
 export const router = createBrowserRouter([
     {
@@ -35,6 +37,14 @@ export const router = createBrowserRouter([
             {
                 path: "test",
                 element: <TestPage />,
+            },
+            {
+                path: "info",
+                element: <Info />,
+            },
+            {
+                path: "gasless",
+                element: <GaslessPaymentPage />,
             },
         ],
     },

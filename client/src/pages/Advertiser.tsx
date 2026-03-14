@@ -1,5 +1,5 @@
 import { useAccount } from "wagmi";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { parseUnits } from "viem";
 import { WalletButton } from "../components/WalletButton";
 import {
@@ -10,6 +10,7 @@ import {
     generateCampaignId,
 } from "../hooks/useContracts";
 import { AdType, CPM_RATES, AD_TYPE_LABELS } from "../contracts/Web3AdsCore";
+import { uploadAdImage } from "../lib/supabase";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -46,8 +47,11 @@ export function AdvertiserPage() {
     const [campaignName, setCampaignName] = useState("");
     const [adType, setAdType] = useState<number>(AdType.BANNER);
     const [budget, setBudget] = useState("");
-    const [imageUrl, setImageUrl] = useState("");
+    const [imagePreview, setImagePreview] = useState<string | null>(null);
+    const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
+    const [isUploading, setIsUploading] = useState(false);
     const [targetUrl, setTargetUrl] = useState("");
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Transaction state
     const [step, setStep] = useState<"idle" | "approving" | "creating" | "activating">("idle");
@@ -95,9 +99,60 @@ export function AdvertiserPage() {
     }, [address]);
 
     // Contract hooks
-    const { approve, isPending: _isApproving, isSuccess: approveSuccess, isConfirming: _approveConfirming } = useApproveUSDC();
-    const { createCampaign, isPending: _isCreating, isSuccess: createSuccess, isConfirming: _createConfirming, reset: resetCreate } = useCreateCampaign();
-    const { activateCampaign, isPending: _isActivating, isSuccess: activateSuccess, isConfirming: _activateConfirming } = useActivateCampaign();
+    const { approve, isSuccess: approveSuccess } = useApproveUSDC();
+    const { createCampaign, isSuccess: createSuccess, reset: resetCreate } = useCreateCampaign();
+    const { activateCampaign, isSuccess: activateSuccess } = useActivateCampaign();
+
+    // Handle image file selection
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        // Validate file type
+        if (!file.type.startsWith("image/")) {
+            alert("Please select an image file");
+            return;
+        }
+
+        // Validate file size (max 5MB)
+        if (file.size > 5 * 1024 * 1024) {
+            alert("Image must be smaller than 5MB");
+            return;
+        }
+
+        // Preview the file
+
+        // Create preview
+        const reader = new FileReader();
+        reader.onloadend = () => {
+            setImagePreview(reader.result as string);
+        };
+        reader.readAsDataURL(file);
+
+        // Upload immediately
+        if (address) {
+            setIsUploading(true);
+            try {
+                const url = await uploadAdImage(file, address);
+                setUploadedImageUrl(url);
+            } catch (err) {
+                console.error("Failed to upload image:", err);
+                alert("Failed to upload image. Please try again.");
+                setImagePreview(null);
+            } finally {
+                setIsUploading(false);
+            }
+        }
+    };
+
+    // Clear image
+    const clearImage = () => {
+        setImagePreview(null);
+        setUploadedImageUrl(null);
+        if (fileInputRef.current) {
+            fileInputRef.current.value = "";
+        }
+    };
 
     // Save campaigns to localStorage
     useEffect(() => {
@@ -134,7 +189,7 @@ export function AdvertiserPage() {
                             walletAddress: address,
                             name: campaignName,
                             adType: ["BANNER", "SQUARE", "SIDEBAR", "INTERSTITIAL"][adType],
-                            mediaUrl: imageUrl || `https://picsum.photos/${adType === 0 ? "728/90" : adType === 1 ? "300/300" : adType === 2 ? "300/600" : "800/600"}`,
+                            mediaUrl: uploadedImageUrl || `https://picsum.photos/${adType === 0 ? "728/90" : adType === 1 ? "300/300" : adType === 2 ? "300/600" : "800/600"}`,
                             targetUrl: targetUrl || "https://web3ads.wtf",
                             budget: Number(budget),
                         }),
@@ -155,7 +210,7 @@ export function AdvertiserPage() {
                     budget: Number(budget),
                     spent: 0,
                     impressions: 0,
-                    imageUrl,
+                    imageUrl: uploadedImageUrl || "",
                     targetUrl,
                     status: "created",
                     createdAt: Date.now(),
@@ -192,7 +247,7 @@ export function AdvertiserPage() {
             setPendingCampaignId(null);
             setCampaignName("");
             setBudget("");
-            setImageUrl("");
+            clearImage();
             setTargetUrl("");
             resetCreate();
         }
@@ -326,16 +381,55 @@ export function AdvertiserPage() {
                             </div>
                             <div>
                                 <label className="block font-mono text-xs font-bold uppercase text-zinc-400">
-                                    CREATIVE (IMAGE URL)
+                                    CREATIVE (IMAGE)
                                 </label>
                                 <input
-                                    type="text"
-                                    value={imageUrl}
-                                    onChange={(e) => setImageUrl(e.target.value)}
-                                    placeholder="https://..."
-                                    className="mt-2 w-full border-4 border-zinc-700 bg-black px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 focus:border-[#ff3e00] focus:outline-none"
+                                    ref={fileInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    onChange={handleImageSelect}
+                                    className="hidden"
                                     disabled={isLoading}
+                                    aria-label="Upload ad image"
                                 />
+                                {isUploading ? (
+                                    <div className="mt-2 flex flex-col items-center justify-center border-4 border-dashed border-zinc-700 bg-black px-4 py-8">
+                                        <div className="h-10 w-10 animate-spin rounded-full border-4 border-zinc-600 border-t-[#ff3e00]"></div>
+                                        <p className="mt-2 font-mono text-xs text-zinc-500">UPLOADING...</p>
+                                    </div>
+                                ) : !imagePreview ? (
+                                    <div
+                                        onClick={() => fileInputRef.current?.click()}
+                                        className="mt-2 flex cursor-pointer flex-col items-center justify-center border-4 border-dashed border-zinc-700 bg-black px-4 py-8 transition-colors hover:border-[#ff3e00]"
+                                    >
+                                        <svg xmlns="http://www.w3.org/2000/svg" className="h-10 w-10 text-zinc-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                                        </svg>
+                                        <p className="mt-2 font-mono text-xs text-zinc-500">CLICK TO UPLOAD IMAGE</p>
+                                        <p className="mt-1 font-mono text-xs text-zinc-600">PNG, JPG, GIF up to 5MB</p>
+                                    </div>
+                                ) : (
+                                    <div className="mt-2 relative">
+                                        <img
+                                            src={imagePreview}
+                                            alt="Ad preview"
+                                            className="w-full max-h-48 object-contain border-4 border-zinc-700 bg-zinc-900"
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={clearImage}
+                                            title="Remove image"
+                                            className="absolute top-2 right-2 bg-black border-2 border-zinc-600 p-1 hover:border-[#ff3e00] hover:text-[#ff3e00] transition-colors"
+                                        >
+                                            <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                                            </svg>
+                                        </button>
+                                        {uploadedImageUrl && (
+                                            <p className="mt-1 font-mono text-xs text-green-500">✓ UPLOADED</p>
+                                        )}
+                                    </div>
+                                )}
                             </div>
                             <div>
                                 <label className="block font-mono text-xs font-bold uppercase text-zinc-400">
@@ -352,7 +446,7 @@ export function AdvertiserPage() {
                             </div>
                             <button
                                 type="submit"
-                                disabled={isLoading || !campaignName || !budget || Number(budget) < 10}
+                                disabled={isLoading || !campaignName || !budget || Number(budget) < 10 || !uploadedImageUrl}
                                 className="w-full border-4 border-[#ff3e00] bg-[#ff3e00] py-4 font-mono text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-black disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
                             >
                                 {buttonText}

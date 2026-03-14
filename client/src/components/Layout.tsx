@@ -8,7 +8,9 @@ export function Layout() {
         { path: "/advertiser", label: "ADVERTISE" },
         { path: "/publisher", label: "PUBLISH" },
         { path: "/viewer", label: "EARN" },
+        { path: "/gasless", label: "GASLESS" },
         { path: "/dashboard", label: "DASHBOARD" },
+        { path: "/info", label: "INFO" },
     ];
 
     return (
@@ -24,8 +26,8 @@ export function Layout() {
                             key={item.path}
                             to={item.path}
                             className={`border-4 px-4 py-2 font-mono text-xs font-bold uppercase tracking-wider no-underline transition-all ${location.pathname === item.path
-                                    ? "border-[#ff3e00] bg-[#ff3e00] text-white"
-                                    : "border-transparent text-zinc-400 hover:border-zinc-700 hover:text-white"
+                                ? "border-[#ff3e00] bg-[#ff3e00] text-white"
+                                : "border-transparent text-zinc-400 hover:border-zinc-700 hover:text-white"
                                 }`}
                         >
                             {item.label}
@@ -46,7 +48,7 @@ export function Layout() {
                     <span className="text-[#ff3e00]">•</span>
                     <span>SEMAPHORE</span>
                     <span className="text-[#ff3e00]">•</span>
-                    <span>USDC</span>
+                    <span>ETH</span>
                 </div>
             </footer>
         </div>

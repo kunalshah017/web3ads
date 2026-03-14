@@ -21,20 +21,26 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 | **Viewer Page**            | ✅ Done | Semaphore identity generation, wallet linking                         |
 | **Chrome Extension**       | ✅ Done | Identity storage, popup UI, switch wallet                             |
 | **web3ads-react SDK**      | ✅ Done | Published to npm v0.1.0, Ad component, extension detection            |
-| **Smart Contracts**        | ✅ Done | Web3AdsCore deployed to Base Sepolia                                  |
+| **Smart Contracts V1**     | ✅ Done | Web3AdsCore (USDC) deployed to Base Sepolia                           |
+| **Smart Contracts V2**     | ✅ Done | Web3AdsCoreV2 (ETH) + Forwarder for gasless                           |
 | **Backend Signing**        | ✅ Done | EIP-712 signatures for impressions and withdrawals                    |
-| **Viewer Withdrawal**      | ✅ Done | Backend proof endpoints + client withdrawal UI                        |
+| **Viewer Withdrawal**      | ✅ Done | Backend calls contract directly (pays gas)                            |
 | **zkProof Verification**   | ✅ Done | Simplified nullifier-based (commitment + secret hash per ad)          |
 | **Impression Tracking**    | ✅ Done | Rate limiting, fraud prevention, viewability (IntersectionObserver)   |
 | **Publisher Dashboard**    | ✅ Done | Earnings from server, embed code, withdrawal UI                       |
 | **Advertiser Dashboard**   | ✅ Done | Campaign creation, server sync, analytics (impressions/spent)         |
+| **Info Page**              | ✅ Done | Demo vs Production pricing tables, technical specs                    |
+| **Gasless Transactions**   | ✅ Done | Backend pays gas for viewer withdrawals (simplified for hackathon)    |
+| **Gasless Payment Page**   | ✅ Done | `/gasless` - Send ETH to any address using ad earnings, $0 gas        |
+| **Publisher Gasless**      | ✅ Done | `withdrawPublisherTo()` contract function for publisher gasless       |
 
 ### 🔄 In Progress / Remaining
 
-| Component                | Status     | Notes                                       |
-| ------------------------ | ---------- | ------------------------------------------- |
-| **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster                          |
-| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments                      |
+| Component                | Status     | Notes                                            |
+| ------------------------ | ---------- | ------------------------------------------------ |
+| **Deploy V2 Contracts**  | ⏳ Pending | Web3AdsCoreV2 + Forwarder to Base Sepolia        |
+| **Update Client for V2** | ⏳ Pending | Remove USDC, use ETH-based hooks                 |
+| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments via MCP server            |
 
 ### 🏗️ Key Architecture Decisions Made
 
@@ -43,14 +49,17 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 3. **Wallet = Earnings Bucket**: Each wallet has separate earnings, no transfer between wallets
 4. **Switch Wallet Flow**: Clears identity entirely, creates fresh one for new wallet
 5. **Unscoped npm Package**: Published as `web3ads-react` (not `@web3ads/react`) to avoid npm organization requirements
+6. **ETH-Based Payments (V2)**: Switched from USDC to native ETH to simplify faucet requirements
+7. **Backend-Paid Gas**: For hackathon demo, backend pays gas directly instead of full ERC-4337 paymaster
 
 ### 📋 Deployed Addresses (Base Sepolia)
 
-| Contract       | Address                                      |
-| -------------- | -------------------------------------------- |
-| Web3AdsCore    | `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872` |
-| USDC (Mock)    | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
-| Backend Signer | `0x3B2F1274dA63a64bBd22ba801ce449A313192ee6` |
+| Contract         | Address                                      | Notes           |
+| ---------------- | -------------------------------------------- | --------------- |
+| Web3AdsCore V1   | `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872` | USDC-based (old)|
+| Web3AdsCoreV2    | `TBD - deploy pending`                       | ETH-based (new) |
+| Forwarder        | `TBD - deploy pending`                       | EIP-2771        |
+| Backend Signer   | `0x3B2F1274dA63a64bBd22ba801ce449A313192ee6` |                 |
 
 ---
 
@@ -98,28 +107,43 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ## Monetization Model (CPM-Based)
 
-### Pricing Structure
+### Revenue Distribution
+- **Publisher:** 50%
+- **Viewer:** 20%
+- **Platform:** 30%
 
-- **Advertisers pay:** $2-10 CPM (Cost Per Mille/1000 impressions) based on ad type
-- **Revenue split:**
-  - Platform: 30%
-  - Publisher: 50%
-  - Viewer: 20%
+### Demo Pricing (Hackathon - 500x inflated)
 
-### Ad Types & Pricing
+Goal: Viewer earns ~$1 after viewing 5 banner ads
 
-| Ad Type                | CPM Rate | Publisher Share | Viewer Share |
-| ---------------------- | -------- | --------------- | ------------ |
-| Footer Banner (728x90) | $2       | $1.00           | $0.40        |
-| Square (300x300)       | $3       | $1.50           | $0.60        |
-| Sidebar (300x600)      | $4       | $2.00           | $0.80        |
-| Interstitial           | $8       | $4.00           | $1.60        |
+| Ad Type      | CPM Rate | Cost/Ad | Publisher (5 ads) | Viewer (5 ads) |
+| ------------ | -------- | ------- | ----------------- | -------------- |
+| Banner       | $1,000   | $1.00   | $2.50             | **$1.00**      |
+| Square       | $1,500   | $1.50   | $3.75             | **$1.50**      |
+| Sidebar      | $2,000   | $2.00   | $5.00             | **$2.00**      |
+| Interstitial | $4,000   | $4.00   | $10.00            | **$4.00**      |
 
-### Payout Thresholds
+**ETH Values (at $2000/ETH):**
+- Banner CPM: 0.5 ETH
+- Square CPM: 0.75 ETH
+- Sidebar CPM: 1.0 ETH
+- Interstitial CPM: 2.0 ETH
 
-- **Publishers:** Minimum 0.01 ETH (~$25) to withdraw
-- **Viewers:** Minimum 0.005 ETH (~$12.50) to withdraw
-- **Alternative:** Use balance for gasless transactions (no threshold)
+### Production Pricing (Real-world)
+
+| Ad Type      | CPM Rate | Cost/Ad  | Publisher Share | Viewer Share |
+| ------------ | -------- | -------- | --------------- | ------------ |
+| Banner       | $2       | $0.002   | $1.00/1000      | $0.40/1000   |
+| Square       | $3       | $0.003   | $1.50/1000      | $0.60/1000   |
+| Sidebar      | $4       | $0.004   | $2.00/1000      | $0.80/1000   |
+| Interstitial | $8       | $0.008   | $4.00/1000      | $1.60/1000   |
+
+### Withdrawal Thresholds
+
+| Mode       | Min Withdrawal | Notes                              |
+| ---------- | -------------- | ---------------------------------- |
+| Demo       | 1 wei (~$0)    | Instant withdrawal for any amount  |
+| Production | 0.0001 ETH     | ~$0.20 at $2000/ETH                |
 
 ---
 
@@ -292,52 +316,150 @@ import { Web3Ad } from "web3ads-react";
 
 ## Phase 4: Gasless Transactions
 
-### Implementation on Base
+### Implementation (Simplified for Hackathon)
 
-**Use Coinbase Paymaster or custom paymaster:**
+**Approach: Backend pays gas directly for viewer withdrawals**
 
-1. User initiates transaction (e.g., claim rewards)
-2. Check user's ad earning balance
-3. If sufficient, platform sponsors gas via paymaster
-4. Deduct equivalent from user's ad balance
+Instead of full ERC-4337 paymaster (complex), we use a simpler model:
 
-**Smart contract addition:**
+```
+Viewer clicks "Withdraw" → Server receives request →
+Server calls withdrawViewer() on contract → Server wallet pays gas →
+Contract sends ETH to viewer's wallet
+```
 
-```solidity
-function sponsoredClaim(
-    UserOperation calldata userOp,
-    uint256 adBalanceToSpend
-) external
+**Why this works:**
+- Gas cost on Base L2: ~$0.01 per transaction
+- Backend wallet pre-funded with ETH
+- No need for viewer to have any ETH at all
+
+**Contract Support (Web3AdsCoreV2):**
+- EIP-2771 trusted forwarder pattern (for future full gasless)
+- Backend signature verification for withdrawals
+- `_msgSender()` override extracts real user from forwarder calls
+
+**Server Implementation:**
+```typescript
+// server/src/blockchain/index.ts
+export async function withdrawViewerOnChain(params: {
+  commitment: `0x${string}`;
+  recipient: `0x${string}`;
+}): Promise<Hash | null> {
+  // 1. Sign message: keccak256(commitment + recipient)
+  const signature = await signViewerWithdrawal(params);
+  
+  // 2. Call contract (backend pays gas)
+  const hash = await walletClient.writeContract({
+    address: WEB3ADS_CORE_V2_ADDRESS,
+    abi: WEB3ADS_CORE_V2_ABI,
+    functionName: "withdrawViewer",
+    args: [commitment, recipient, signature],
+  });
+  
+  return hash;
+}
 ```
 
 ---
 
-## Phase 5: MCP Protocol for x402
+## Phase 5: x402 MCP Protocol Integration
 
-### Integration with HeyElsa
+### Overview
 
-**Create MCP server: `packages/mcp-server/`**
+x402 allows AI agents to pay for API calls using crypto. We integrate this so users can spend their Web3Ads earnings through AI agents.
 
-**Tools exposed:**
+### Architecture
 
-```typescript
-// Check user's ad monetization balance
-tool: "web3ads_check_balance"
-params: { zkProofCommitment: string }
-returns: { balanceUSDC: number, canPayFor: string[] }
-
-// Use ad balance to pay for x402 call
-tool: "web3ads_pay_x402"
-params: { commitment: string, amount: number, recipient: string }
-returns: { txHash: string, newBalance: number }
+```
+┌─────────────────────────────────────────────────────────────┐
+│  AI Agent (HeyElsa or any x402-compatible agent)           │
+│    ↓                                                        │
+│  "Pay for this API call using user's Web3Ads balance"      │
+│    ↓                                                        │
+│  Web3Ads MCP Server                                         │
+│    ├── web3ads_check_balance                               │
+│    ├── web3ads_make_payment                                │
+│    └── web3ads_get_earnings                                │
+│    ↓                                                        │
+│  Backend withdraws from contract → Sends to recipient      │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-**Use case flow:**
+### MCP Server Tools
 
-1. AI agent checks if user has web3ads balance
-2. Agent requests x402 API call (e.g., swap quote)
-3. web3ads MCP deducts from user's ad earnings
-4. Agent receives x402 response
+Create: `packages/mcp-server/src/index.ts`
+
+```typescript
+import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+
+const server = new McpServer({
+  name: "web3ads",
+  version: "1.0.0",
+});
+
+// Tool 1: Check balance
+server.tool(
+  "web3ads_check_balance",
+  "Check user's Web3Ads earnings balance",
+  {
+    walletAddress: { type: "string", description: "User's wallet address" },
+  },
+  async ({ walletAddress }) => {
+    const response = await fetch(`${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`);
+    const data = await response.json();
+    return {
+      balanceETH: data.total.pending,
+      balanceUSD: data.total.pending * 2000, // Approximate
+      canWithdraw: data.canWithdraw,
+    };
+  }
+);
+
+// Tool 2: Make payment using ad earnings
+server.tool(
+  "web3ads_make_payment",
+  "Pay for x402 API call using Web3Ads balance",
+  {
+    walletAddress: { type: "string" },
+    amountETH: { type: "number" },
+    recipientAddress: { type: "string" },
+  },
+  async ({ walletAddress, amountETH, recipientAddress }) => {
+    const response = await fetch(`${API_URL}/api/rewards/withdraw`, {
+      method: "POST",
+      body: JSON.stringify({
+        walletAddress,
+        amount: amountETH,
+        payoutType: "viewer",
+        recipient: recipientAddress, // x402 payment recipient
+      }),
+    });
+    return await response.json();
+  }
+);
+
+// Tool 3: Get earnings breakdown
+server.tool(
+  "web3ads_get_earnings",
+  "Get detailed earnings breakdown for user",
+  {
+    walletAddress: { type: "string" },
+  },
+  async ({ walletAddress }) => {
+    const response = await fetch(`${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`);
+    return await response.json();
+  }
+);
+```
+
+### Use Case Flow
+
+1. User views ads → Earns ETH in Web3Ads
+2. User asks AI: "Use my ad earnings to pay for token swap quote"
+3. AI agent calls `web3ads_check_balance` → Has 0.001 ETH
+4. AI agent calls `web3ads_make_payment` → 0.0005 ETH to x402 API provider
+5. Backend executes withdrawal to API provider
+6. AI receives API response, user gets swap quote
 
 ---
 
@@ -581,6 +703,9 @@ SUPABASE_SERVICE_KEY="eyJ..."
 BASE_SEPOLIA_RPC_URL="https://sepolia.base.org"
 DEPLOYER_PRIVATE_KEY="0x..."
 JWT_SECRET="your-random-secret-here"
+BACKEND_SIGNER_PRIVATE_KEY="0x..."  # For signing impressions & withdrawals
+WEB3ADS_CORE_ADDRESS="0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872"  # V1 (USDC)
+WEB3ADS_CORE_V2_ADDRESS="TBD"  # V2 (ETH) - update after deployment
 ```
 
 ### Client (`client/.env`)
@@ -597,3 +722,67 @@ VITE_API_URL="http://localhost:3000"
 ```env
 VITE_API_URL="http://localhost:3000"
 ```
+
+---
+
+## V2 Contract Migration Checklist
+
+After deploying Web3AdsCoreV2 + Forwarder to Base Sepolia:
+
+### ✅ Already Updated
+
+- [x] `contracts/src/Web3AdsCoreV2.sol` - ETH-based contract
+- [x] `contracts/src/Forwarder.sol` - EIP-2771 forwarder
+- [x] `contracts/script/DeployV2.s.sol` - Deployment script  
+- [x] `server/src/blockchain/index.ts` - V2 ABI + withdrawViewerOnChain
+- [x] `server/src/routes/rewards.ts` - ETH-based withdrawals
+- [x] `client/src/pages/Info.tsx` - Demo vs Production pricing
+
+### ⏳ Pending After Deployment
+
+| File | Change Needed |
+|------|---------------|
+| `server/.env` | Add `WEB3ADS_CORE_V2_ADDRESS=0x...` |
+| `client/src/config/wagmi.ts` | Add `web3AdsCoreV2` address, keep V1 for reference |
+| `client/src/contracts/Web3AdsCore.ts` | Update ABI: add `payable` to createCampaign, remove paymentToken |
+| `client/src/hooks/useContracts.ts` | Add `useETHDeposit()` hook, keep USDC hooks for V1 compatibility |
+| `client/src/pages/Advertiser.tsx` | Use `{ value: amount }` instead of USDC approve flow |
+
+### Deployment Commands
+
+```bash
+# 1. Deploy V2 contracts
+cd contracts
+forge script script/DeployV2.s.sol:DeployV2 \
+  --rpc-url https://sepolia.base.org \
+  --broadcast \
+  --verify
+
+# 2. Update .env files with deployed addresses
+# 3. Fund backend signer with ETH for gas
+# 4. Create test campaign with ETH deposit
+```
+
+---
+
+## Demo Script (Hackathon)
+
+1. **Show Advertiser Flow**
+   - Connect wallet → Create campaign → Deposit 0.003 ETH (~$6)
+   - Campaign becomes active
+
+2. **Show Publisher Flow**
+   - Visit test publisher page with `<Web3Ad />` component
+   - Ads display correctly
+
+3. **Show Viewer Flow (Star of Demo)**
+   - Install extension → Link wallet on /viewer page
+   - View 5 banner ads on publisher site
+   - Watch earnings increase: $0 → $0.20 → $0.40 → $0.60 → $0.80 → **$1.00**
+   - Click "Withdraw" → Receive ETH instantly (backend pays gas)
+   - Show tx on BaseScan!
+
+4. **Show x402 Integration (Bonus)**
+   - AI agent checks user's Web3Ads balance
+   - Agent uses earnings to pay for API call
+   - User gets service without spending their own crypto

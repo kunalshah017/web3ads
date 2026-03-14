@@ -1,10 +1,17 @@
 import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
+import {
+  withdrawViewerOnChain,
+  withdrawPublisherOnChain,
+  isBlockchainV2Enabled,
+} from "../blockchain/index.js";
 
 const router: IRouter = Router();
 
-// Minimum withdrawal threshold in USDC
-const MIN_WITHDRAWAL = 10;
+// Minimum withdrawal threshold in ETH
+// 1 wei for demo (essentially no minimum)
+// For production: 0.0001 ETH = ~$0.20 at $2000/ETH
+const MIN_WITHDRAWAL = 0.000000000000000001; // 1 wei
 
 // Get balance for wallet address (checks both publisher and viewer balances)
 router.get("/balance", async (req, res) => {
@@ -157,8 +164,26 @@ router.post("/withdraw", async (req, res) => {
 
     if (withdrawAmount < MIN_WITHDRAWAL) {
       return res.status(400).json({
-        error: `Minimum withdrawal is ${MIN_WITHDRAWAL} USDC. Current balance: ${withdrawAmount}`,
+        error: `Minimum withdrawal is ${MIN_WITHDRAWAL} ETH (~$0.20). Current balance: ${withdrawAmount} ETH`,
       });
+    }
+
+    // For viewer withdrawals, execute on-chain immediately
+    let txHash: string | null = null;
+    if ((payoutType === "viewer" || payoutType === "all") && user.viewer) {
+      const commitment = user.viewer.semaphoreCommitment;
+      if (commitment && isBlockchainV2Enabled()) {
+        txHash = await withdrawViewerOnChain({
+          commitment: commitment as `0x${string}`,
+          recipient: walletAddress.toLowerCase() as `0x${string}`,
+        });
+
+        if (!txHash) {
+          return res.status(500).json({
+            error: "Failed to execute on-chain withdrawal. Please try again.",
+          });
+        }
+      }
     }
 
     // Create payout record
@@ -167,7 +192,8 @@ router.post("/withdraw", async (req, res) => {
         walletAddress: walletAddress.toLowerCase(),
         amount: withdrawAmount,
         payoutType,
-        status: "pending",
+        status: txHash ? "completed" : "pending",
+        txHash: txHash || undefined,
       },
     });
 
@@ -179,9 +205,12 @@ router.post("/withdraw", async (req, res) => {
         id: payout.id,
         amount: withdrawAmount,
         status: payout.status,
+        txHash: txHash || null,
         createdAt: payout.createdAt,
       },
-      message: `Withdrawal of ${withdrawAmount} USDC requested. Will be processed shortly.`,
+      message: txHash
+        ? `Withdrawal of ${withdrawAmount} ETH completed! Tx: ${txHash}`
+        : `Withdrawal of ${withdrawAmount} ETH requested. Will be processed shortly.`,
     });
   } catch (error) {
     console.error("Error requesting withdrawal:", error);
@@ -249,6 +278,164 @@ router.get("/balance-by-commitment", async (req, res) => {
   } catch (error) {
     console.error("Error fetching balance by commitment:", error);
     return res.status(500).json({ error: "Failed to fetch balance" });
+  }
+});
+
+// Gasless payment - send ad earnings to any address without paying gas
+// Supports both publisher and viewer balances
+router.post("/gasless-pay", async (req, res) => {
+  try {
+    const { walletAddress, recipient, amount } = req.body;
+
+    if (!walletAddress) {
+      return res.status(400).json({ error: "walletAddress is required" });
+    }
+    if (!recipient) {
+      return res.status(400).json({ error: "recipient address is required" });
+    }
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: "Valid amount is required" });
+    }
+
+    // Get user and their balances
+    const user = await prisma.user.findUnique({
+      where: { walletAddress: walletAddress.toLowerCase() },
+      include: {
+        publisher: true,
+        viewer: true,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: "User not found" });
+    }
+
+    // Calculate available balances
+    const publisherPending = Number(user.publisher?.pendingBalance || 0);
+    const viewerPending = Number(user.viewer?.pendingBalance || 0);
+    const totalAvailable = publisherPending + viewerPending;
+
+    if (amount > totalAvailable) {
+      return res.status(400).json({
+        error: `Insufficient balance. Available: ${totalAvailable} ETH, Requested: ${amount} ETH`,
+      });
+    }
+
+    if (!isBlockchainV2Enabled()) {
+      return res.status(503).json({
+        error: "Blockchain integration not enabled. Please try again later.",
+      });
+    }
+
+    // Determine which balance(s) to use and execute withdrawal(s)
+    let txHash: string | null = null;
+    let remainingAmount = amount;
+    const dbUpdates: Promise<unknown>[] = [];
+    const sources: string[] = [];
+
+    // Try publisher balance first (if available)
+    if (publisherPending > 0 && remainingAmount > 0 && user.publisher) {
+      const publisherWithdrawAmount = Math.min(
+        publisherPending,
+        remainingAmount,
+      );
+
+      txHash = await withdrawPublisherOnChain({
+        publisher: walletAddress.toLowerCase() as `0x${string}`,
+        recipient: recipient.toLowerCase() as `0x${string}`,
+      });
+
+      if (txHash) {
+        remainingAmount -= publisherWithdrawAmount;
+        sources.push(`publisher: ${publisherWithdrawAmount} ETH`);
+
+        dbUpdates.push(
+          prisma.publisher.update({
+            where: { id: user.publisher.id },
+            data: {
+              pendingBalance: { decrement: publisherWithdrawAmount },
+              claimedBalance: { increment: publisherWithdrawAmount },
+            },
+          }),
+        );
+      }
+    }
+
+    // Use viewer balance for remaining amount (if needed)
+    if (
+      remainingAmount > 0 &&
+      viewerPending > 0 &&
+      user.viewer?.semaphoreCommitment
+    ) {
+      const viewerWithdrawAmount = Math.min(viewerPending, remainingAmount);
+
+      const viewerTxHash = await withdrawViewerOnChain({
+        commitment: user.viewer.semaphoreCommitment as `0x${string}`,
+        recipient: recipient.toLowerCase() as `0x${string}`,
+      });
+
+      if (viewerTxHash) {
+        txHash = viewerTxHash; // Use latest tx hash
+        remainingAmount -= viewerWithdrawAmount;
+        sources.push(`viewer: ${viewerWithdrawAmount} ETH`);
+
+        dbUpdates.push(
+          prisma.viewer.update({
+            where: { id: user.viewer.id },
+            data: {
+              pendingBalance: { decrement: viewerWithdrawAmount },
+              claimedBalance: { increment: viewerWithdrawAmount },
+            },
+          }),
+        );
+      }
+    }
+
+    // Check if we successfully withdrew anything
+    if (!txHash || remainingAmount > 0) {
+      return res.status(500).json({
+        error: "Failed to execute on-chain transaction. Please try again.",
+        details:
+          remainingAmount > 0
+            ? `Could not withdraw full amount. Missing: ${remainingAmount} ETH`
+            : "Transaction failed",
+      });
+    }
+
+    // Execute database updates
+    await Promise.all(dbUpdates);
+
+    // Create payout record
+    const payout = await prisma.payout.create({
+      data: {
+        walletAddress: walletAddress.toLowerCase(),
+        amount: amount,
+        payoutType: "gasless",
+        status: "completed",
+        txHash: txHash,
+      },
+    });
+
+    console.log(
+      `[GaslessPay] ${walletAddress} sent ${amount} ETH to ${recipient} (${sources.join(", ")}) | tx: ${txHash}`,
+    );
+
+    return res.status(200).json({
+      success: true,
+      txHash: txHash,
+      amount: amount,
+      recipient: recipient,
+      sources: sources,
+      payout: {
+        id: payout.id,
+        status: payout.status,
+        createdAt: payout.createdAt,
+      },
+      message: `Successfully sent ${amount} ETH to ${recipient}. Gas sponsored by Web3Ads!`,
+    });
+  } catch (error) {
+    console.error("Error processing gasless payment:", error);
+    return res.status(500).json({ error: "Failed to process gasless payment" });
   }
 });
 
