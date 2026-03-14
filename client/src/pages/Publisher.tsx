@@ -1,7 +1,6 @@
 import { useAccount } from "wagmi";
 import { WalletButton } from "../components/WalletButton";
-import { useState, useEffect } from "react";
-import { usePublisherBalance, usePublisherWithdraw } from "../hooks/useContracts";
+import { useState, useEffect, useCallback } from "react";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 
@@ -15,13 +14,16 @@ interface PublisherStats {
 export function PublisherPage() {
     const { isConnected, address } = useAccount();
     const [selectedType, setSelectedType] = useState("banner");
-    const { balance, formattedBalance, refetch } = usePublisherBalance();
-    const { withdraw, isPending, isConfirming, isSuccess } = usePublisherWithdraw();
     const [stats, setStats] = useState<PublisherStats | null>(null);
     const [statsLoading, setStatsLoading] = useState(false);
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
+    const [withdrawSuccess, setWithdrawSuccess] = useState(false);
+    const [withdrawError, setWithdrawError] = useState<string | null>(null);
+    const [txHash, setTxHash] = useState<string | null>(null);
 
-    const MIN_WITHDRAWAL = 10_000_000n; // 10 USDC
-    const canWithdraw = balance && balance >= MIN_WITHDRAWAL;
+    // Demo mode: 1 wei minimum (essentially no minimum)
+    const MIN_WITHDRAWAL = 0.000000000000000001; // 1 wei
+    const canWithdraw = stats && stats.pendingBalance >= MIN_WITHDRAWAL;
 
     // Fetch publisher stats from API
     useEffect(() => {
@@ -50,6 +52,53 @@ export function PublisherPage() {
         fetchStats();
     }, [address]);
 
+    // Gasless withdrawal via backend API
+    const handleWithdraw = useCallback(async () => {
+        if (!address || !stats?.pendingBalance) return;
+
+        setIsWithdrawing(true);
+        setWithdrawError(null);
+        setWithdrawSuccess(false);
+        setTxHash(null);
+
+        try {
+            const response = await fetch(`${API_URL}/api/rewards/withdraw`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    walletAddress: address,
+                    payoutType: "publisher",
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || "Withdrawal failed");
+            }
+
+            setWithdrawSuccess(true);
+            setTxHash(data.payout?.txHash || null);
+
+            // Refresh stats
+            const res = await fetch(`${API_URL}/api/publishers/profile?walletAddress=${address}`);
+            if (res.ok) {
+                const updated = await res.json();
+                setStats({
+                    totalViews: updated.publisher?.totalViews || 0,
+                    totalEarnings: Number(updated.publisher?.totalEarnings || 0),
+                    pendingBalance: Number(updated.publisher?.pendingBalance || 0),
+                    claimedBalance: Number(updated.publisher?.claimedBalance || 0),
+                });
+            }
+        } catch (error) {
+            console.error("Withdrawal failed:", error);
+            setWithdrawError(error instanceof Error ? error.message : "Withdrawal failed");
+        } finally {
+            setIsWithdrawing(false);
+        }
+    }, [address, stats?.pendingBalance]);
+
     const embedCode = `import { Web3Ad } from 'web3ads-react';
 
 <Web3Ad
@@ -57,11 +106,6 @@ export function PublisherPage() {
   type="${selectedType}"
   category="defi"
 />`;
-
-    // Refetch balance on successful withdrawal
-    if (isSuccess) {
-        refetch();
-    }
 
     if (!isConnected) {
         return (
@@ -140,8 +184,9 @@ export function PublisherPage() {
                                 YOUR EARNINGS
                             </h2>
                             <div className="mt-6 text-center">
-                                <span className="block font-mono text-5xl font-black text-[#ff3e00]">${formattedBalance}</span>
-                                <span className="font-mono text-xs uppercase text-zinc-500">PENDING USDC</span>
+                                <span className="block font-mono text-5xl font-black text-[#ff3e00]">{statsLoading ? "..." : (stats?.pendingBalance || 0).toFixed(6)}</span>
+                                <span className="font-mono text-xs uppercase text-zinc-500">PENDING ETH</span>
+                                <span className="mt-1 block font-mono text-sm text-zinc-400">≈ ${statsLoading ? "..." : ((stats?.pendingBalance || 0) * 2000).toFixed(2)} USD</span>
                             </div>
 
                             <div className="mt-6 space-y-2 border-t-2 border-zinc-700 pt-4">
@@ -151,26 +196,54 @@ export function PublisherPage() {
                                 </div>
                                 <div className="flex justify-between font-mono text-xs uppercase">
                                     <span className="text-zinc-500">TOTAL EARNED</span>
-                                    <span className="text-white">${statsLoading ? "..." : (stats?.totalEarnings || 0).toFixed(4)}</span>
+                                    <span className="text-white">{statsLoading ? "..." : (stats?.totalEarnings || 0).toFixed(6)} ETH</span>
                                 </div>
                                 <div className="flex justify-between font-mono text-xs uppercase">
                                     <span className="text-zinc-500">CLAIMED</span>
-                                    <span className="text-white">${statsLoading ? "..." : (stats?.claimedBalance || 0).toFixed(4)}</span>
+                                    <span className="text-white">{statsLoading ? "..." : (stats?.claimedBalance || 0).toFixed(6)} ETH</span>
                                 </div>
                             </div>
 
+                            {withdrawSuccess && (
+                                <div className="mt-4 border-2 border-green-500 bg-green-500/10 p-3 text-center">
+                                    <span className="font-mono text-xs font-bold uppercase text-green-500">✓ WITHDRAWAL SUCCESSFUL</span>
+                                    {txHash && (
+                                        <a
+                                            href={`https://sepolia.basescan.org/tx/${txHash}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="mt-1 block font-mono text-xs text-green-400 underline"
+                                        >
+                                            View on BaseScan
+                                        </a>
+                                    )}
+                                </div>
+                            )}
+
+                            {withdrawError && (
+                                <div className="mt-4 border-2 border-red-500 bg-red-500/10 p-3 text-center">
+                                    <span className="font-mono text-xs font-bold uppercase text-red-500">{withdrawError}</span>
+                                </div>
+                            )}
+
                             <button
-                                onClick={() => withdraw()}
-                                disabled={!canWithdraw || isPending || isConfirming}
+                                onClick={handleWithdraw}
+                                disabled={!canWithdraw || isWithdrawing}
                                 className={`mt-6 w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${canWithdraw
                                     ? "border-[#ff3e00] bg-[#ff3e00] text-white hover:bg-black"
                                     : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
                                     }`}
                             >
-                                {isPending || isConfirming
+                                {isWithdrawing
                                     ? "WITHDRAWING..."
-                                    : `WITHDRAW${!canWithdraw ? " (MIN $10)" : ""}`}
+                                    : canWithdraw
+                                        ? "WITHDRAW (GASLESS)"
+                                        : "NO BALANCE"}
                             </button>
+
+                            <p className="mt-2 text-center font-mono text-xs text-zinc-500">
+                                WE PAY GAS FEES ON BASE L2
+                            </p>
                         </div>
 
                         {/* Ad Preview */}

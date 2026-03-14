@@ -6,6 +6,7 @@
  * 1. Check user's ad earnings balance
  * 2. Make payments using ad earnings (gasless)
  * 3. Get detailed earnings breakdown
+ * 4. Create ad campaigns using x402 payment
  *
  * For x402/HeyElsa integration - allows agents to pay for API calls
  * using funds earned from viewing/publishing ads.
@@ -43,6 +44,23 @@ interface PaymentResponse {
   txHash?: string;
   error?: string;
   sources?: string[];
+}
+
+interface CampaignResponse {
+  campaign?: {
+    id: string;
+    name: string;
+    budget: number;
+    status: string;
+    adType: string;
+  };
+  payment?: {
+    method: string;
+    amount: number;
+    remainingWeb3AdsBalance?: number;
+  };
+  message?: string;
+  error?: string;
 }
 
 // Create MCP server
@@ -375,6 +393,227 @@ server.tool(
       ],
     };
   },
+);
+
+/**
+ * Tool 5: Create Campaign with x402 Payment
+ * Creates an ad campaign using Web3Ads balance (from ad earnings)
+ */
+server.tool(
+  "web3ads_create_campaign",
+  "Create an advertising campaign on Web3Ads. Pays using your Web3Ads balance from ad earnings (gasless!). Returns campaign details on success.",
+  {
+    walletAddress: z
+      .string()
+      .describe("Your wallet address that has Web3Ads earnings"),
+    name: z.string().describe("Campaign name"),
+    description: z.string().optional().describe("Campaign description"),
+    adType: z
+      .enum(["BANNER", "SQUARE", "SIDEBAR", "INTERSTITIAL"])
+      .describe(
+        "Ad format: BANNER (728x90), SQUARE (300x250), SIDEBAR (160x600), INTERSTITIAL (fullscreen)"
+      ),
+    mediaUrl: z
+      .string()
+      .url()
+      .describe("URL to the ad image (must be publicly accessible)"),
+    targetUrl: z
+      .string()
+      .url()
+      .describe("URL users go to when clicking the ad"),
+    budget: z
+      .number()
+      .positive()
+      .describe("Campaign budget in ETH (will be paid from your Web3Ads balance)"),
+    category: z
+      .string()
+      .optional()
+      .describe("Ad category (e.g., 'tech', 'defi', 'nft')"),
+  },
+  async ({
+    walletAddress,
+    name,
+    description,
+    adType,
+    mediaUrl,
+    targetUrl,
+    budget,
+    category,
+  }) => {
+    try {
+      // First check balance
+      const balanceResponse = await fetch(
+        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`
+      );
+      const balanceData = (await balanceResponse.json()) as BalanceResponse;
+
+      if (balanceData.total.pending < budget) {
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: "Insufficient Web3Ads balance",
+                required: budget,
+                available: balanceData.total.pending,
+                suggestion:
+                  "Earn more by viewing ads with the Web3Ads extension or publishing ads on your site!",
+              }),
+            },
+          ],
+        };
+      }
+
+      // Create campaign with x402 payment using Web3Ads balance
+      const response = await fetch(`${API_URL}/api/campaigns/create-funded`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Payment-Method": "web3ads-balance",
+          "X-Payer-Address": walletAddress,
+        },
+        body: JSON.stringify({
+          walletAddress,
+          name,
+          description,
+          adType,
+          mediaUrl,
+          targetUrl,
+          budget,
+          category,
+        }),
+      });
+
+      const data = (await response.json()) as CampaignResponse;
+
+      if (!response.ok) {
+        // Check if it's a 402 response
+        if (response.status === 402) {
+          return {
+            content: [
+              {
+                type: "text",
+                text: JSON.stringify({
+                  success: false,
+                  error: "Payment required",
+                  details: data,
+                  suggestion:
+                    "Your Web3Ads balance may be insufficient. Check balance first.",
+                }),
+              },
+            ],
+          };
+        }
+
+        return {
+          content: [
+            {
+              type: "text",
+              text: JSON.stringify({
+                success: false,
+                error: data.error || "Failed to create campaign",
+              }),
+            },
+          ],
+        };
+      }
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: true,
+              campaign: {
+                id: data.campaign?.id,
+                name: data.campaign?.name,
+                status: data.campaign?.status,
+                budget: data.campaign?.budget,
+                adType: data.campaign?.adType,
+              },
+              payment: {
+                method: "web3ads-balance",
+                amountETH: budget,
+                amountUSD: Number((budget * 2000).toFixed(2)),
+                remainingBalance: data.payment?.remainingWeb3AdsBalance,
+                gasless: true,
+              },
+              message: data.message,
+              dashboardUrl: `https://web3ads.wtf/advertiser?campaign=${data.campaign?.id}`,
+            }),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              success: false,
+              error: "Failed to create campaign",
+              details: error instanceof Error ? error.message : "Unknown error",
+            }),
+          },
+        ],
+      };
+    }
+  }
+);
+
+/**
+ * Tool 6: Get x402 Payment Info
+ * Returns information about x402 payment requirements
+ */
+server.tool(
+  "web3ads_payment_info",
+  "Get information about x402 payment protocol and your available Web3Ads balance for payments.",
+  {
+    walletAddress: z
+      .string()
+      .optional()
+      .describe("Your wallet address to check available balance"),
+  },
+  async ({ walletAddress }) => {
+    try {
+      const url = walletAddress
+        ? `${API_URL}/api/campaigns/payment-info?walletAddress=${walletAddress}`
+        : `${API_URL}/api/campaigns/payment-info`;
+
+      const response = await fetch(url);
+      const data = (await response.json()) as Record<string, unknown>;
+
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify(
+              {
+                ...data,
+                description:
+                  "Web3Ads implements x402 payment protocol. You can pay for API calls using your ad earnings (gasless!) or direct ETH transfers.",
+              },
+              null,
+              2
+            ),
+          },
+        ],
+      };
+    } catch (error) {
+      return {
+        content: [
+          {
+            type: "text",
+            text: JSON.stringify({
+              error: "Failed to fetch payment info",
+              details: error instanceof Error ? error.message : "Unknown error",
+            }),
+          },
+        ],
+      };
+    }
+  }
 );
 
 // Start server

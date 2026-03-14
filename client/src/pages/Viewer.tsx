@@ -3,11 +3,11 @@ import { WalletButton } from "../components/WalletButton";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Identity } from "@semaphore-protocol/core";
-import { useViewerBalance, useViewerWithdraw } from "../hooks/useContracts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const IDENTITY_STORAGE_KEY = "web3ads_semaphore_identity";
-const MIN_WITHDRAWAL = 10_000_000n; // 10 USDC
+// Demo mode: 1 wei minimum (essentially no minimum for hackathon)
+const MIN_WITHDRAWAL = 0.000000000000000001; // 1 wei in ETH
 
 interface ExtensionStatus {
     hasIdentity?: boolean;
@@ -45,25 +45,51 @@ export function ViewerPage() {
     const [isLinking, setIsLinking] = useState(false);
     const [linkingError, setLinkingError] = useState<string | null>(null);
     const [identity, setIdentity] = useState<Identity | null>(null);
-    const [isRequestingProof, setIsRequestingProof] = useState(false);
+    const [isWithdrawing, setIsWithdrawing] = useState(false);
     const [withdrawError, setWithdrawError] = useState<string | null>(null);
+    const [withdrawSuccess, setWithdrawSuccess] = useState(false);
+    const [txHash, setTxHash] = useState<string | null>(null);
+    const [viewerStats, setViewerStats] = useState<{
+        pendingBalance: number;
+        totalEarnings: number;
+        totalAdsViewed: number;
+    } | null>(null);
 
     // Get commitment for balance check
     const commitment = identity?.commitment.toString();
-    const { balance: onChainBalance, formattedBalance, refetch: refetchBalance } = useViewerBalance(commitment);
-    const { withdraw, isPending: isWithdrawing, isConfirming, isSuccess: withdrawSuccess } = useViewerWithdraw();
 
     // Check if in switch-wallet mode (coming from extension popup)
     const isSwitchWalletMode = searchParams.get("action") === "switch-wallet";
 
-    const canWithdraw = onChainBalance && onChainBalance >= MIN_WITHDRAWAL;
+    const canWithdraw = viewerStats && viewerStats.pendingBalance >= MIN_WITHDRAWAL;
 
-    // Refetch balance on successful withdrawal
-    useEffect(() => {
-        if (withdrawSuccess) {
-            refetchBalance();
+    // Fetch viewer stats from API
+    const fetchViewerStats = useCallback(async () => {
+        if (!commitment) return;
+
+        try {
+            const response = await fetch(`${API_URL}/api/rewards/balance-by-commitment?commitment=${commitment}`);
+            if (response.ok) {
+                const data = await response.json();
+                if (data.found) {
+                    setViewerStats({
+                        pendingBalance: Number(data.balance),
+                        totalEarnings: Number(data.totalEarnings),
+                        totalAdsViewed: data.totalAdsViewed || 0,
+                    });
+                }
+            }
+        } catch (error) {
+            console.error("[Web3Ads] Failed to fetch viewer stats:", error);
         }
-    }, [withdrawSuccess, refetchBalance]);
+    }, [commitment]);
+
+    // Fetch stats when commitment is available
+    useEffect(() => {
+        if (commitment) {
+            fetchViewerStats();
+        }
+    }, [commitment, fetchViewerStats]);
 
     // Initialize Semaphore identity on mount (or create fresh one if switching)
     useEffect(() => {
@@ -183,42 +209,44 @@ export function ViewerPage() {
         }, 10000);
     }, [address, extensionInstalled, identity]);
 
-    // Handle withdrawal - get proof from backend, then call contract
+    // Handle gasless withdrawal via backend API
     const handleWithdraw = useCallback(async () => {
         if (!address || !commitment) return;
 
-        setIsRequestingProof(true);
+        setIsWithdrawing(true);
         setWithdrawError(null);
+        setWithdrawSuccess(false);
+        setTxHash(null);
 
         try {
-            // Request withdrawal proof from backend
-            const response = await fetch(`${API_URL}/api/viewers/withdrawal-proof`, {
+            // Use gasless withdrawal - backend pays gas
+            const response = await fetch(`${API_URL}/api/rewards/withdraw`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify({
-                    commitment,
-                    recipient: address,
+                    walletAddress: address,
+                    payoutType: "viewer",
                 }),
             });
 
+            const data = await response.json();
+
             if (!response.ok) {
-                const error = await response.json();
-                setWithdrawError(error.error || "Failed to get withdrawal proof");
-                setIsRequestingProof(false);
-                return;
+                throw new Error(data.error || "Withdrawal failed");
             }
 
-            const { signature } = await response.json();
-            setIsRequestingProof(false);
+            setWithdrawSuccess(true);
+            setTxHash(data.payout?.txHash || null);
 
-            // Call contract with signature
-            withdraw(commitment, signature);
+            // Refresh stats
+            setTimeout(() => fetchViewerStats(), 1000);
         } catch (error) {
             console.error("[Web3Ads] Withdrawal failed:", error);
-            setWithdrawError("Failed to process withdrawal");
-            setIsRequestingProof(false);
+            setWithdrawError(error instanceof Error ? error.message : "Withdrawal failed");
+        } finally {
+            setIsWithdrawing(false);
         }
-    }, [address, commitment, withdraw]);
+    }, [address, commitment, fetchViewerStats]);
 
     const isWalletLinked = extensionStatus?.walletAddress?.toLowerCase() === address?.toLowerCase();
 
@@ -376,34 +404,49 @@ export function ViewerPage() {
                         {/* Withdrawal Section - Show when wallet is linked */}
                         {isWalletLinked && isConnected && (
                             <div className="mt-6 border-t-2 border-zinc-700 pt-6">
-                                <h3 className="font-mono text-xs font-bold uppercase text-zinc-500">ON-CHAIN BALANCE</h3>
+                                <h3 className="font-mono text-xs font-bold uppercase text-zinc-500">YOUR EARNINGS</h3>
                                 <div className="mt-4 grid gap-4 md:grid-cols-2">
                                     <div className="border-2 border-zinc-700 bg-black p-4">
                                         <span className="font-mono text-xs uppercase text-zinc-500">AVAILABLE TO WITHDRAW</span>
                                         <span className="mt-2 block font-mono text-3xl font-black text-accent">
-                                            ${formattedBalance}
+                                            {viewerStats?.pendingBalance?.toFixed(6) || "0.000000"}
                                         </span>
-                                        <span className="font-mono text-xs text-zinc-600">USDC on Base Sepolia</span>
+                                        <span className="font-mono text-xs text-zinc-400">ETH on Base Sepolia</span>
+                                        <span className="mt-1 block font-mono text-xs text-zinc-500">
+                                            ≈ ${((viewerStats?.pendingBalance || 0) * 2000).toFixed(2)} USD
+                                        </span>
                                     </div>
                                     <div className="flex flex-col justify-center border-2 border-zinc-700 bg-black p-4">
                                         <button
                                             onClick={handleWithdraw}
-                                            disabled={!canWithdraw || isWithdrawing || isConfirming || isRequestingProof}
+                                            disabled={!canWithdraw || isWithdrawing}
                                             className={`w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${canWithdraw
-                                                    ? "border-accent bg-accent text-black hover:bg-white"
-                                                    : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                                                ? "border-accent bg-accent text-black hover:bg-white"
+                                                : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
                                                 }`}
                                         >
-                                            {isRequestingProof
-                                                ? "REQUESTING PROOF..."
-                                                : isWithdrawing || isConfirming
-                                                    ? "WITHDRAWING..."
-                                                    : `WITHDRAW${!canWithdraw ? " (MIN $10)" : ""}`}
+                                            {isWithdrawing
+                                                ? "WITHDRAWING..."
+                                                : canWithdraw
+                                                    ? "WITHDRAW (GASLESS)"
+                                                    : "NO BALANCE"}
                                         </button>
                                         {withdrawSuccess && (
-                                            <p className="mt-2 text-center font-mono text-xs uppercase text-green-500">
-                                                ✓ WITHDRAWAL SUCCESSFUL
-                                            </p>
+                                            <div className="mt-2 text-center">
+                                                <p className="font-mono text-xs uppercase text-green-500">
+                                                    ✓ WITHDRAWAL SUCCESSFUL
+                                                </p>
+                                                {txHash && (
+                                                    <a
+                                                        href={`https://sepolia.basescan.org/tx/${txHash}`}
+                                                        target="_blank"
+                                                        rel="noopener noreferrer"
+                                                        className="font-mono text-xs text-green-400 underline"
+                                                    >
+                                                        View on BaseScan
+                                                    </a>
+                                                )}
+                                            </div>
                                         )}
                                         {withdrawError && (
                                             <p className="mt-2 text-center font-mono text-xs uppercase text-red-500">
@@ -411,7 +454,7 @@ export function ViewerPage() {
                                             </p>
                                         )}
                                         <p className="mt-2 text-center font-mono text-xs uppercase text-zinc-600">
-                                            MIN: $10 USDC
+                                            WE PAY GAS FEES ON BASE L2
                                         </p>
                                     </div>
                                 </div>

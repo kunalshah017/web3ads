@@ -3,6 +3,9 @@ import { withErrorBoundary, withSuspense } from "@extension/shared";
 import { ErrorDisplay, LoadingSpinner } from "@extension/ui";
 import { useEffect, useState } from "react";
 
+// Web3Ads client URL - change for production
+const WEB3ADS_URL = import.meta.env.DEV ? "http://localhost:5173" : "https://web3ads.wtf";
+
 interface ViewerStatus {
   hasIdentity: boolean;
   commitment: string | null;
@@ -28,7 +31,7 @@ const Popup = () => {
 
   const handleLinkWallet = () => {
     // Open the viewer page on our website to link wallet
-    chrome.tabs.create({ url: "http://localhost:5173/viewer" }); // TODO: Change to https://web3ads.wtf/viewer in production
+    chrome.tabs.create({ url: `${WEB3ADS_URL}/viewer` });
   };
 
   const handleSwitchWallet = async () => {
@@ -44,7 +47,7 @@ const Popup = () => {
       viewedAdsCount: 0,
     });
     // Open viewer page to connect new wallet
-    chrome.tabs.create({ url: "http://localhost:5173/viewer?action=switch-wallet" }); // TODO: Change to https://web3ads.wtf/viewer in production
+    chrome.tabs.create({ url: `${WEB3ADS_URL}/viewer?action=switch-wallet` });
   };
 
   const copyCommitment = async () => {
