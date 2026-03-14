@@ -1,7 +1,11 @@
 import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
 import { AdType, CampaignStatus } from "@prisma/client";
-import { x402, getX402Payment, generatePaymentInfo } from "../middleware/x402.js";
+import {
+  x402,
+  getX402Payment,
+  generatePaymentInfo,
+} from "../middleware/x402.js";
 
 const router: IRouter = Router();
 
@@ -287,7 +291,7 @@ router.get("/:id/stats", async (req, res) => {
 /**
  * Fund a campaign with x402 payment
  * POST /api/campaigns/:id/fund
- * 
+ *
  * Requires x402 payment headers:
  * - X-Payment-Method: "direct" | "web3ads-balance"
  * - X-Payment-Proof: txHash (for direct payment)
@@ -297,10 +301,10 @@ router.post(
   "/:id/fund",
   async (req, res, next) => {
     const { amount } = req.body;
-    
+
     if (!amount || parseFloat(amount) <= 0) {
-      return res.status(400).json({ 
-        error: "amount is required and must be positive" 
+      return res.status(400).json({
+        error: "amount is required and must be positive",
       });
     }
 
@@ -311,7 +315,7 @@ router.post(
       description: `Fund campaign with ${amount} ETH`,
       acceptWeb3AdsBalance: true, // Allow using ad earnings!
     });
-    
+
     return middleware(req, res, next);
   },
   async (req, res) => {
@@ -325,7 +329,7 @@ router.post(
       }
 
       const campaign = await prisma.campaign.findUnique({ where: { id } });
-      
+
       if (!campaign) {
         return res.status(404).json({ error: "Campaign not found" });
       }
@@ -340,7 +344,7 @@ router.post(
       });
 
       console.log(
-        `[x402] Campaign funded: ${id} +${amount} ETH via ${payment.method} by ${payment.payer}`
+        `[x402] Campaign funded: ${id} +${amount} ETH via ${payment.method} by ${payment.payer}`,
       );
 
       return res.json({
@@ -358,13 +362,13 @@ router.post(
       console.error("Error funding campaign:", error);
       return res.status(500).json({ error: "Failed to fund campaign" });
     }
-  }
+  },
 );
 
 /**
  * Create and fund campaign in one step with x402 payment
  * POST /api/campaigns/create-funded
- * 
+ *
  * This is the recommended endpoint for AI agents.
  * Creates campaign and funds it atomically.
  */
@@ -372,9 +376,9 @@ router.post(
   "/create-funded",
   async (req, res, next) => {
     const { budget, adType } = req.body;
-    
+
     if (!budget || parseFloat(budget) <= 0) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: "budget is required and must be positive",
         paymentInfo: generatePaymentInfo(0.5, "campaign-creation"),
       });
@@ -387,7 +391,7 @@ router.post(
       description: `Create campaign with ${budget} ETH budget`,
       acceptWeb3AdsBalance: true,
     });
-    
+
     return middleware(req, res, next);
   },
   async (req, res) => {
@@ -413,7 +417,8 @@ router.post(
       // Validate required fields
       if (!walletAddress || !name || !adType || !mediaUrl || !targetUrl) {
         return res.status(400).json({
-          error: "Missing required fields: walletAddress, name, adType, mediaUrl, targetUrl",
+          error:
+            "Missing required fields: walletAddress, name, adType, mediaUrl, targetUrl",
         });
       }
 
@@ -453,7 +458,7 @@ router.post(
       });
 
       console.log(
-        `[x402] Campaign created: ${campaign.id} with ${budget} ETH via ${payment.method} by ${payment.payer}`
+        `[x402] Campaign created: ${campaign.id} with ${budget} ETH via ${payment.method} by ${payment.payer}`,
       );
 
       return res.status(201).json({
@@ -471,13 +476,13 @@ router.post(
       console.error("Error creating funded campaign:", error);
       return res.status(500).json({ error: "Failed to create campaign" });
     }
-  }
+  },
 );
 
 /**
  * Get x402 payment info for campaign operations
  * GET /api/campaigns/payment-info
- * 
+ *
  * Returns information about how to pay for campaign operations.
  * Useful for AI agents to understand payment requirements.
  */
@@ -490,7 +495,7 @@ router.get("/payment-info", async (req, res) => {
       where: { walletAddress: walletAddress.toLowerCase() },
       include: { publisher: true, viewer: true },
     });
-    
+
     if (user) {
       const publisherPending = Number(user.publisher?.pendingBalance || 0);
       const viewerPending = Number(user.viewer?.pendingBalance || 0);
@@ -505,7 +510,9 @@ router.get("/payment-info", async (req, res) => {
   return res.json({
     protocol: "x402",
     description: "Web3Ads supports x402 payment protocol for AI agents",
-    paymentAddress: process.env.PLATFORM_WALLET_ADDRESS || "0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E",
+    paymentAddress:
+      process.env.PLATFORM_WALLET_ADDRESS ||
+      "0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E",
     network: "base-sepolia",
     chainId: 84532,
     currency: "ETH",

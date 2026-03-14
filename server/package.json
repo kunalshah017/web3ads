@@ -29,7 +29,8 @@
     "pg": "^8.20.0",
     "prisma": "^7.5.0",
     "typescript": "^5.9.3",
-    "viem": "^2.47.2"
+    "viem": "^2.47.2",
+    "x402-express": "^1.1.0"
   },
   "devDependencies": {
     "@types/supertest": "^6.0.3",

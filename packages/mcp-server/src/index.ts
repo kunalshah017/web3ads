@@ -411,7 +411,7 @@ server.tool(
     adType: z
       .enum(["BANNER", "SQUARE", "SIDEBAR", "INTERSTITIAL"])
       .describe(
-        "Ad format: BANNER (728x90), SQUARE (300x250), SIDEBAR (160x600), INTERSTITIAL (fullscreen)"
+        "Ad format: BANNER (728x90), SQUARE (300x250), SIDEBAR (160x600), INTERSTITIAL (fullscreen)",
       ),
     mediaUrl: z
       .string()
@@ -424,7 +424,9 @@ server.tool(
     budget: z
       .number()
       .positive()
-      .describe("Campaign budget in ETH (will be paid from your Web3Ads balance)"),
+      .describe(
+        "Campaign budget in ETH (will be paid from your Web3Ads balance)",
+      ),
     category: z
       .string()
       .optional()
@@ -443,7 +445,7 @@ server.tool(
     try {
       // First check balance
       const balanceResponse = await fetch(
-        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`
+        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`,
       );
       const balanceData = (await balanceResponse.json()) as BalanceResponse;
 
@@ -559,7 +561,7 @@ server.tool(
         ],
       };
     }
-  }
+  },
 );
 
 /**
@@ -595,7 +597,7 @@ server.tool(
                   "Web3Ads implements x402 payment protocol. You can pay for API calls using your ad earnings (gasless!) or direct ETH transfers.",
               },
               null,
-              2
+              2,
             ),
           },
         ],
@@ -613,7 +615,83 @@ server.tool(
         ],
       };
     }
-  }
+  },
+);
+
+/**
+ * Tool 7: Get x402 Protocol Info
+ * Returns full x402 integration details for developers and AI agents
+ */
+server.tool(
+  "web3ads_x402_protocol",
+  "Get detailed x402 protocol information for Web3Ads integration. Explains how to use Web3Ads earnings for x402 payments.",
+  {},
+  async () => {
+    const info = {
+      protocol: "x402",
+      version: "1.0.0",
+      description:
+        "Web3Ads implements the Coinbase x402 payment protocol, enabling AI agents to pay for API calls using ad earnings.",
+      implementation: {
+        standard: "Coinbase x402 (https://github.com/coinbase/x402)",
+        packages: ["x402-express", "x402-axios", "x402-fetch"],
+        network: "base-sepolia",
+        chainId: 84532,
+      },
+      web3adsIntegration: {
+        unique:
+          "Web3Ads allows AI agents to use their ad earnings as payment source",
+        flow: [
+          "1. User earns ETH by viewing/publishing ads",
+          "2. AI agent checks balance with web3ads_check_balance",
+          "3. AI agent makes x402 API call with X-Payment-Method: web3ads-balance",
+          "4. Payment deducted from ad earnings (no wallet signature needed!)",
+          "5. API returns response",
+        ],
+        benefits: [
+          "Gasless - Web3Ads sponsors all transaction fees",
+          "No wallet interaction - uses existing ad earnings",
+          "Low friction - perfect for autonomous AI agents",
+          "Earnable - users can accumulate balance by viewing ads",
+        ],
+      },
+      headers: {
+        request: {
+          "X-Payment-Method":
+            "'web3ads-balance' (use ad earnings) or 'direct' (ETH transfer)",
+          "X-Payer-Address": "Wallet address with Web3Ads earnings",
+          "X-Payment-Proof": "Transaction hash (only for 'direct' method)",
+        },
+        response402: {
+          "WWW-Authenticate": "x402",
+          "X-Payment-Address": "Platform wallet to send payment",
+          "X-Payment-Amount": "Required payment amount",
+          "X-Accept-Web3Ads-Balance": "Whether ad earnings accepted",
+        },
+      },
+      compatibleWith: [
+        "HeyElsa x402 API",
+        "OpenClaw AI agents",
+        "Coinbase CDP",
+        "Any x402-compliant service",
+      ],
+      documentation: {
+        x402Protocol: "https://x402.org",
+        coinbaseX402: "https://github.com/coinbase/x402",
+        heyElsa: "https://x402.heyelsa.ai/docs",
+        web3ads: "https://web3ads.wtf",
+      },
+    };
+
+    return {
+      content: [
+        {
+          type: "text",
+          text: JSON.stringify(info, null, 2),
+        },
+      ],
+    };
+  },
 );
 
 // Start server

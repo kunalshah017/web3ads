@@ -40,6 +40,7 @@ Add to your Claude Desktop config (`claude_desktop_config.json`):
 ## Usage with HeyElsa / x402
 
 The MCP server is designed for x402 integration, allowing AI agents to:
+
 1. **Pay for API calls** using funds earned from viewing/publishing ads
 2. **Create ad campaigns** using x402 payment protocol
 

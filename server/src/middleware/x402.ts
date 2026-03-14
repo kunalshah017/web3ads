@@ -1,23 +1,19 @@
 /**
  * x402 Protocol Middleware for Web3Ads
  *
- * Implements HTTP 402 Payment Required flow for AI agent payments.
+ * Implements HTTP 402 Payment Required using Coinbase's official x402 protocol.
  * Supports two payment methods:
- * 1. Direct ETH payment (on-chain verification)
- * 2. Web3Ads balance payment (gasless, uses ad earnings)
+ * 1. Official x402 (USDC via Coinbase facilitator) - Standard protocol
+ * 2. Web3Ads balance payment (gasless, uses ad earnings) - Our unique feature
  *
- * Headers:
- * - Request: X-Payment-Method: "direct" | "web3ads-balance"
- * - Request: X-Payment-Proof: txHash (for direct) or signature (for balance)
- * - Request: X-Payer-Address: wallet address
- * - Response: X-Payment-Address: where to send payment
- * - Response: X-Payment-Amount: required amount in ETH
- * - Response: X-Payment-Network: blockchain network
- * - Response: X-Accept-Web3Ads-Balance: "true" if Web3Ads balance accepted
+ * This enables AI agents to pay for API calls using either:
+ * - USDC on Base Sepolia (standard x402)
+ * - Web3Ads ad earnings (no wallet needed, gasless!)
  */
 
 import { Request, Response, NextFunction } from "express";
-import { createPublicClient, http, parseAbi, formatEther } from "viem";
+import { paymentMiddleware as x402PaymentMiddleware } from "x402-express";
+import { createPublicClient, http, formatEther } from "viem";
 import { baseSepolia } from "viem/chains";
 import prisma from "../db/index.js";
 
@@ -25,9 +21,6 @@ import prisma from "../db/index.js";
 const PLATFORM_WALLET =
   process.env.PLATFORM_WALLET_ADDRESS ||
   "0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E";
-
-const WEB3ADS_CORE_V2_ADDRESS = process.env
-  .WEB3ADS_CORE_V2_ADDRESS as `0x${string}`;
 
 const BASE_SEPOLIA_RPC_URL =
   process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
@@ -41,6 +34,7 @@ const publicClient = createPublicClient({
 export interface X402Config {
   resourceType: "campaign" | "api-call" | "custom";
   priceETH: number | ((req: Request) => number);
+  priceUSD?: number | ((req: Request) => number); // For official x402 (USDC)
   description?: string;
   acceptWeb3AdsBalance?: boolean; // Default: true
 }
@@ -48,7 +42,7 @@ export interface X402Config {
 export interface X402PaymentInfo {
   paymentRequired: boolean;
   amount: number;
-  currency: "ETH";
+  currency: "ETH" | "USDC";
   network: "base-sepolia";
   paymentAddress: string;
   acceptsWeb3AdsBalance: boolean;
@@ -62,7 +56,7 @@ export interface X402PaymentInfo {
 async function verifyDirectPayment(
   txHash: `0x${string}`,
   expectedAmount: number,
-  payerAddress: string
+  payerAddress: string,
 ): Promise<{ valid: boolean; error?: string }> {
   try {
     const receipt = await publicClient.getTransactionReceipt({ hash: txHash });
@@ -105,7 +99,7 @@ async function verifyDirectPayment(
  */
 async function verifyWeb3AdsBalancePayment(
   payerAddress: string,
-  amount: number
+  amount: number,
 ): Promise<{ valid: boolean; error?: string; newBalance?: number }> {
   try {
     const user = await prisma.user.findUnique({
@@ -145,7 +139,7 @@ async function verifyWeb3AdsBalancePayment(
             pendingBalance: { decrement: deductAmount },
             claimedBalance: { increment: deductAmount },
           },
-        })
+        }),
       );
     }
 
@@ -159,7 +153,7 @@ async function verifyWeb3AdsBalancePayment(
             pendingBalance: { decrement: deductAmount },
             claimedBalance: { increment: deductAmount },
           },
-        })
+        }),
       );
     }
 
@@ -177,7 +171,7 @@ async function verifyWeb3AdsBalancePayment(
     });
 
     console.log(
-      `[x402] Balance payment: ${payerAddress} paid ${amount} ETH from Web3Ads balance`
+      `[x402] Balance payment: ${payerAddress} paid ${amount} ETH from Web3Ads balance`,
     );
 
     return {
@@ -197,7 +191,7 @@ export function x402(config: X402Config) {
   return async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ): Promise<void> => {
     // Calculate price
     const price =
@@ -274,7 +268,7 @@ export function x402(config: X402Config) {
       const verification = await verifyDirectPayment(
         paymentProof as `0x${string}`,
         price,
-        payerAddress
+        payerAddress,
       );
 
       if (!verification.valid) {
@@ -296,7 +290,7 @@ export function x402(config: X402Config) {
       };
 
       console.log(
-        `[x402] Direct payment verified: ${payerAddress} paid ${price} ETH | tx: ${paymentProof}`
+        `[x402] Direct payment verified: ${payerAddress} paid ${price} ETH | tx: ${paymentProof}`,
       );
     } else if (paymentMethod === "web3ads-balance") {
       if (!acceptsBalance) {
@@ -310,7 +304,7 @@ export function x402(config: X402Config) {
 
       const verification = await verifyWeb3AdsBalancePayment(
         payerAddress,
-        price
+        price,
       );
 
       if (!verification.valid) {
@@ -366,7 +360,7 @@ export function getX402Payment(req: Request): {
 export function generatePaymentInfo(
   priceETH: number,
   resourceType: string,
-  acceptsBalance = true
+  acceptsBalance = true,
 ): X402PaymentInfo {
   return {
     paymentRequired: true,
@@ -378,6 +372,41 @@ export function generatePaymentInfo(
     resourceType,
     description: `Payment for ${resourceType}`,
   };
+}
+
+/**
+ * Create official Coinbase x402-express middleware for USDC payments
+ * This follows the standard x402 protocol that HeyElsa and other services use
+ */
+export function createOfficialX402Middleware(routes: Record<string, { price: string; description?: string }>) {
+  return x402PaymentMiddleware(
+    PLATFORM_WALLET as `0x${string}`,
+    Object.fromEntries(
+      Object.entries(routes).map(([path, config]) => [
+        path,
+        {
+          price: config.price,
+          network: "base-sepolia" as const,
+          config: {
+            description: config.description || `Access to ${path}`,
+          },
+        },
+      ])
+    )
+  );
+}
+
+/**
+ * Export the official x402 payment middleware for direct use
+ * Use this for standard USDC payments via Coinbase x402 protocol
+ */
+export { x402PaymentMiddleware as officialX402Middleware };
+
+/**
+ * Get platform wallet address
+ */
+export function getPlatformWallet(): string {
+  return PLATFORM_WALLET;
 }
 
 export default x402;
