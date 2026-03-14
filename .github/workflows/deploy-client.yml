@@ -43,7 +43,7 @@ jobs:
             - name: Build
               working-directory: ./client
               env:
-                  VITE_API_URL: https://web3ads-api.azurewebsites.net
+                  VITE_API_URL: ${{ secrets.VITE_API_URL }}
               run: pnpm build
 
             - name: Deploy to Azure Static Web Apps
