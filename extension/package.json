@@ -1,7 +1,7 @@
 {
   "name": "chrome-extension-boilerplate-react-vite",
   "version": "0.5.0",
-  "description": "chrome extension boilerplate",
+  "description": "Web3Ads - Privacy-preserving ad rewards extension",
   "license": "MIT",
   "private": true,
   "sideEffects": false,
@@ -38,6 +38,7 @@
     "postinstall": "pnpm copy-env"
   },
   "dependencies": {
+    "@semaphore-protocol/core": "^4.0.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0"
   },

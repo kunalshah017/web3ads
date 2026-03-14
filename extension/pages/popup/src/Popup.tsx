@@ -1,61 +1,139 @@
-import '@src/Popup.css';
-import { t } from '@extension/i18n';
-import { PROJECT_URL_OBJECT, useStorage, withErrorBoundary, withSuspense } from '@extension/shared';
-import { exampleThemeStorage } from '@extension/storage';
-import { cn, ErrorDisplay, LoadingSpinner, ToggleButton } from '@extension/ui';
+import "@src/Popup.css";
+import { withErrorBoundary, withSuspense } from "@extension/shared";
+import { ErrorDisplay, LoadingSpinner } from "@extension/ui";
+import { useEffect, useState } from "react";
 
-const notificationOptions = {
-  type: 'basic',
-  iconUrl: chrome.runtime.getURL('icon-34.png'),
-  title: 'Injecting content script error',
-  message: 'You cannot inject script here!',
-} as const;
+interface ViewerStatus {
+  commitment: string;
+  isRegistered: boolean;
+  walletAddress: string | null;
+  totalEarnings: number;
+  viewedAdsCount: number;
+}
 
 const Popup = () => {
-  const { isLight } = useStorage(exampleThemeStorage);
-  const logo = isLight ? 'popup/logo_vertical.svg' : 'popup/logo_vertical_dark.svg';
+  const [status, setStatus] = useState<ViewerStatus | null>(null);
+  const [walletInput, setWalletInput] = useState("");
+  const [isLinking, setIsLinking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  const goGithubSite = () => chrome.tabs.create(PROJECT_URL_OBJECT);
+  useEffect(() => {
+    // Fetch status from background script
+    chrome.runtime.sendMessage({ type: "GET_STATUS" }, (response) => {
+      if (response) {
+        setStatus(response);
+        chrome.action.setBadgeText({ text: "" }); // Clear NEW badge
+      }
+    });
+  }, []);
 
-  const injectContentScript = async () => {
-    const [tab] = await chrome.tabs.query({ currentWindow: true, active: true });
-
-    if (tab.url!.startsWith('about:') || tab.url!.startsWith('chrome:')) {
-      chrome.notifications.create('inject-error', notificationOptions);
+  const handleLinkWallet = async () => {
+    if (!walletInput || !walletInput.startsWith("0x")) {
+      setError("Please enter a valid wallet address");
+      return;
     }
 
-    await chrome.scripting
-      .executeScript({
-        target: { tabId: tab.id! },
-        files: ['/content-runtime/example.iife.js', '/content-runtime/all.iife.js'],
-      })
-      .catch(err => {
-        // Handling errors related to other paths
-        if (err.message.includes('Cannot access a chrome:// URL')) {
-          chrome.notifications.create('inject-error', notificationOptions);
+    setIsLinking(true);
+    setError(null);
+
+    chrome.runtime.sendMessage(
+      { type: "LINK_WALLET", walletAddress: walletInput.toLowerCase() },
+      (response) => {
+        setIsLinking(false);
+        if (response?.success) {
+          setStatus((prev) =>
+            prev ? { ...prev, walletAddress: walletInput, isRegistered: true } : null,
+          );
+          setWalletInput("");
+        } else {
+          setError("Failed to link wallet. Try again.");
         }
-      });
+      },
+    );
   };
 
+  if (!status) {
+    return (
+      <div className="web3ads-popup loading">
+        <div className="spinner" />
+      </div>
+    );
+  }
+
   return (
-    <div className={cn('App', isLight ? 'bg-slate-50' : 'bg-gray-800')}>
-      <header className={cn('App-header', isLight ? 'text-gray-900' : 'text-gray-100')}>
-        <button onClick={goGithubSite}>
-          <img src={chrome.runtime.getURL(logo)} className="App-logo" alt="logo" />
-        </button>
-        <p>
-          Edit <code>pages/popup/src/Popup.tsx</code>
-        </p>
-        <button
-          className={cn(
-            'mt-4 rounded px-4 py-1 font-bold shadow hover:scale-105',
-            isLight ? 'bg-blue-200 text-black' : 'bg-gray-700 text-white',
-          )}
-          onClick={injectContentScript}>
-          {t('injectButton')}
-        </button>
-        <ToggleButton>{t('toggleTheme')}</ToggleButton>
-      </header>
+    <div className="web3ads-popup">
+      {/* Header */}
+      <div className="header">
+        <div className="logo">◈ WEB3ADS</div>
+        <div className="tagline">EARN FROM ADS YOU VIEW</div>
+      </div>
+
+      {/* Status Card */}
+      <div className="status-card">
+        <div className="status-row">
+          <span className="label">STATUS</span>
+          <span className={`value ${status.isRegistered ? "active" : "pending"}`}>
+            {status.isRegistered ? "● ACTIVE" : "○ UNLINKED"}
+          </span>
+        </div>
+
+        <div className="status-row">
+          <span className="label">ADS VIEWED</span>
+          <span className="value">{status.viewedAdsCount}</span>
+        </div>
+
+        <div className="status-row earnings">
+          <span className="label">TOTAL EARNED</span>
+          <span className="value highlight">${status.totalEarnings.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Wallet Section */}
+      <div className="wallet-section">
+        {status.walletAddress ? (
+          <div className="wallet-linked">
+            <span className="label">LINKED WALLET</span>
+            <span className="address">{`${status.walletAddress.slice(0, 6)}...${status.walletAddress.slice(-4)}`}</span>
+          </div>
+        ) : (
+          <div className="wallet-link-form">
+            <input
+              type="text"
+              placeholder="0x..."
+              value={walletInput}
+              onChange={(e) => setWalletInput(e.target.value)}
+              className="wallet-input"
+            />
+            <button onClick={handleLinkWallet} disabled={isLinking} className="link-btn">
+              {isLinking ? "LINKING..." : "LINK WALLET"}
+            </button>
+            {error && <div className="error">{error}</div>}
+          </div>
+        )}
+      </div>
+
+      {/* Info */}
+      <div className="info-section">
+        <div className="info-item">
+          <span className="icon">💰</span>
+          <span>Earn 20% of ad revenue</span>
+        </div>
+        <div className="info-item">
+          <span className="icon">🔒</span>
+          <span>Privacy via zkProofs</span>
+        </div>
+        <div className="info-item">
+          <span className="icon">⛓️</span>
+          <span>Withdraw to Base L2</span>
+        </div>
+      </div>
+
+      {/* Footer */}
+      <div className="footer">
+        <span className="commitment">
+          ID: {status.commitment.slice(0, 8)}...{status.commitment.slice(-4)}
+        </span>
+      </div>
     </div>
   );
 };
