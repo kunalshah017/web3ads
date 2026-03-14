@@ -336,7 +336,8 @@ export function useViewerWithdraw() {
     async (commitment: string, proof: `0x${string}`) => {
       if (!contractAddress || !address) return;
 
-      const commitmentBytes = `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
+      const commitmentBytes =
+        `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
 
       writeContract({
         address: contractAddress,

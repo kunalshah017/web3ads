@@ -24,8 +24,7 @@ const WEB3ADS_CORE_ABI = parseAbi([
 // Environment variables
 const BACKEND_SIGNER_PRIVATE_KEY = process.env
   .BACKEND_SIGNER_PRIVATE_KEY as `0x${string}`;
-const WEB3ADS_CORE_ADDRESS = process.env
-  .WEB3ADS_CORE_ADDRESS as `0x${string}`;
+const WEB3ADS_CORE_ADDRESS = process.env.WEB3ADS_CORE_ADDRESS as `0x${string}`;
 const BASE_SEPOLIA_RPC_URL =
   process.env.BASE_SEPOLIA_RPC_URL || "https://sepolia.base.org";
 
@@ -230,8 +229,4 @@ export function isBlockchainEnabled(): boolean {
   return !!(signerAccount && WEB3ADS_CORE_ADDRESS);
 }
 
-export {
-  signerAccount,
-  WEB3ADS_CORE_ADDRESS,
-  WEB3ADS_CORE_ABI,
-};
+export { signerAccount, WEB3ADS_CORE_ADDRESS, WEB3ADS_CORE_ABI };

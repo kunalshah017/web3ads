@@ -389,11 +389,10 @@ export function ViewerPage() {
                                         <button
                                             onClick={handleWithdraw}
                                             disabled={!canWithdraw || isWithdrawing || isConfirming || isRequestingProof}
-                                            className={`w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${
-                                                canWithdraw
+                                            className={`w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${canWithdraw
                                                     ? "border-accent bg-accent text-black hover:bg-white"
                                                     : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                                            }`}
+                                                }`}
                                         >
                                             {isRequestingProof
                                                 ? "REQUESTING PROOF..."

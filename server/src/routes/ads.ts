@@ -2,10 +2,7 @@ import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
 import { AdType, CampaignStatus } from "@prisma/client";
 import crypto from "crypto";
-import {
-  signImpression,
-  isBlockchainEnabled,
-} from "../blockchain/index.js";
+import { signImpression, isBlockchainEnabled } from "../blockchain/index.js";
 
 const router: IRouter = Router();
 

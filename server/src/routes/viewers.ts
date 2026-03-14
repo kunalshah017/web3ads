@@ -414,7 +414,8 @@ router.post("/withdrawal-proof", async (req, res) => {
     }
 
     // Check on-chain balance
-    const commitmentBytes = `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
+    const commitmentBytes =
+      `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
     const onChainBalance = await getViewerBalanceOnChain(commitmentBytes);
 
     if (!onChainBalance || onChainBalance === 0n) {
@@ -443,7 +444,9 @@ router.post("/withdrawal-proof", async (req, res) => {
     });
   } catch (error) {
     console.error("Error generating withdrawal proof:", error);
-    return res.status(500).json({ error: "Failed to generate withdrawal proof" });
+    return res
+      .status(500)
+      .json({ error: "Failed to generate withdrawal proof" });
   }
 });
 
@@ -464,7 +467,8 @@ router.get("/onchain-balance", async (req, res) => {
       });
     }
 
-    const commitmentBytes = `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
+    const commitmentBytes =
+      `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
     const balance = await getViewerBalanceOnChain(commitmentBytes);
 
     return res.json({
