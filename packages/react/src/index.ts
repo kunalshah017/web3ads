@@ -9,6 +9,7 @@ export {
   WEB3ADS_API_URL,
   setApiUrl,
   isExtensionInstalled,
+  checkExtensionAsync,
   getExtensionProofData,
 } from "./api";
 export type { ExtensionProofData } from "./api";

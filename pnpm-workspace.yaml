@@ -5,3 +5,4 @@ packages:
   - "extension/packages/*"
   - "extension/pages/*"
   - "extension/chrome-extension"
+  - "packages/*"

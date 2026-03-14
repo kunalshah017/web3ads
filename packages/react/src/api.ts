@@ -80,14 +80,43 @@ export async function recordImpression(
 
 /**
  * Check if the Web3Ads extension is installed
+ * Uses CSP-safe detection via data attribute
  */
 export function isExtensionInstalled(): boolean {
-  // Extension injects a global flag
-  return (
-    typeof window !== "undefined" &&
-    !!(window as typeof window & { __WEB3ADS_EXTENSION__: boolean })
-      .__WEB3ADS_EXTENSION__
-  );
+  if (typeof window === "undefined" || typeof document === "undefined") {
+    return false;
+  }
+  // Extension sets data attribute on document element (CSP-safe)
+  return document.documentElement.hasAttribute("data-web3ads-extension");
+}
+
+/**
+ * Check extension with message fallback (async)
+ */
+export async function checkExtensionAsync(): Promise<boolean> {
+  // First check data attribute
+  if (isExtensionInstalled()) {
+    return true;
+  }
+
+  // Fallback: request confirmation via postMessage
+  return new Promise((resolve) => {
+    const handler = (event: MessageEvent) => {
+      if (event.data?.type === "WEB3ADS_EXTENSION_READY") {
+        window.removeEventListener("message", handler);
+        resolve(true);
+      }
+    };
+
+    window.addEventListener("message", handler);
+    window.postMessage({ type: "WEB3ADS_CHECK_EXTENSION" }, "*");
+
+    // Timeout after 500ms
+    setTimeout(() => {
+      window.removeEventListener("message", handler);
+      resolve(false);
+    }, 500);
+  });
 }
 
 /**
