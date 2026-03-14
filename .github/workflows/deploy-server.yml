@@ -21,17 +21,22 @@ jobs:
               with:
                   node-version: "20"
 
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v4
+              with:
+                  version: 9
+
             - name: Install dependencies
               working-directory: ./server
-              run: npm ci
+              run: pnpm install --frozen-lockfile
 
             - name: Build TypeScript
               working-directory: ./server
-              run: npm run build
+              run: pnpm build
 
             - name: Prune dev dependencies
               working-directory: ./server
-              run: npm prune --production
+              run: pnpm prune --prod
 
             - name: Create deployment package
               working-directory: ./server
