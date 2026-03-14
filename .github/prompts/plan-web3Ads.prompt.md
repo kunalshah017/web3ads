@@ -9,6 +9,40 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ---
 
+## Implementation Progress
+
+### ✅ Completed
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Server API** | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL |
+| **Viewer Registration** | ✅ Done | `/api/viewers/register`, `/api/viewers/profile`, `/api/viewers/stats` |
+| **Client Web App** | ✅ Done | React + Vite + wagmi + RainbowKit |
+| **Viewer Page** | ✅ Done | Semaphore identity generation, wallet linking |
+| **Chrome Extension** | ✅ Done | Identity storage, popup UI, switch wallet |
+| **@web3ads/react SDK** | ✅ Done | Ad component, extension detection |
+
+### 🔄 In Progress / Remaining
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| **Smart Contracts** | ⏳ Pending | Web3AdsCore, RewardPool on Base Sepolia |
+| **zkProof Verification** | ⏳ Pending | Backend verification of Semaphore proofs |
+| **Impression Tracking** | ⏳ Pending | With fraud prevention |
+| **Publisher Dashboard** | ⏳ Pending | Earnings, embed code |
+| **Advertiser Dashboard** | ⏳ Pending | Campaign creation, analytics |
+| **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster |
+| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments |
+
+### 🏗️ Key Architecture Decisions Made
+
+1. **Semaphore in Client, Not Extension**: Service workers can't use WASM, so identity generation happens in client app
+2. **CSP-Safe Extension Detection**: Uses `data-web3ads-extension` attribute instead of inline script injection
+3. **Wallet = Earnings Bucket**: Each wallet has separate earnings, no transfer between wallets
+4. **Switch Wallet Flow**: Clears identity entirely, creates fresh one for new wallet
+
+---
+
 ## Partner Technology Integration Strategy
 
 | Partner            | Integration                                        | Priority |
@@ -190,25 +224,49 @@ import { Web3Ad } from "@web3ads/react";
 
 ## Phase 3: Browser Extension (Viewer Earnings)
 
+### Architecture Decision (Updated)
+
+**Semaphore identity generation happens in the CLIENT APP, not the extension.**
+
+**Rationale:**
+- Service workers cannot use `URL.createObjectURL()` which `@semaphore-protocol/core` requires for WASM
+- Moving Semaphore to client app (which has full DOM access) avoids this limitation
+- Extension becomes a lightweight identity storage and proof relay
+
 ### Extension Features
 
-**Enhance `extension/chrome-extension/src/`:**
+**Current implementation in `extension/chrome-extension/src/`:**
 
-1. **Onboarding flow:**
-   - Generate Semaphore identity (private key stored locally)
-   - Join web3ads Semaphore group (one-time on-chain tx)
-   - Store commitment in extension storage
+1. **Identity Storage (no generation):**
+   - Receives Semaphore identity from client via postMessage
+   - Stores commitment + secret in chrome.storage.local
+   - Handles CLEAR_IDENTITY for wallet switching
 
-2. **Content script injection:**
-   - Detect web3ads components on page
-   - Verify actual viewability (not hidden/overlaid)
-   - Generate zkProof for unique view
-   - Communicate proof to ad component via postMessage
+2. **Content script (CSP-safe):**
+   - Sets `data-web3ads-extension="true"` attribute on document element
+   - No inline script injection (avoids CSP violations)
+   - Relays messages between page and background via postMessage
 
 3. **Popup UI:**
-   - Show accumulated earnings
-   - View history
-   - Claim/transfer options
+   - Show linked wallet address with SWITCH button
+   - Display accumulated earnings and ads viewed count
+   - SWITCH button clears identity and opens client for re-linking
+
+### Wallet Management
+
+**Key Design Decision: Each wallet has its own separate earnings.**
+
+- **No earnings transfer** between wallets
+- **Switch wallet** = clear identity in extension + clear localStorage + connect new wallet
+- If user returns to old wallet on new browser, they get their old earnings (via server)
+- Semaphore commitment is tied to browser (localStorage), wallet is tied to earnings (server)
+
+| Scenario | Behavior |
+|----------|----------|
+| Same browser + same wallet | ✅ Idempotent - returns existing viewer |
+| Same browser + different wallet | ❌ Must use SWITCH to clear identity first |
+| Different browser + same wallet | ✅ Server updates commitment for new browser |
+| SWITCH wallet | Clears identity, creates fresh one for new wallet |
 
 ### Anti-Fraud Measures
 
@@ -329,17 +387,21 @@ returns: { txHash: string, newBalance: number }
 12. **Publisher dashboard** — View earnings, get embed code, withdrawal
     > 📌 `git commit -m "feat(client): add publisher earnings dashboard"`
 
-#### A4: Viewer Flow (Extension)
+#### A4: Viewer Flow (Extension) ✅ IMPLEMENTED
 
-13. **Semaphore identity setup** — Generate identity in extension, join group on-chain
+> **Architecture Note:** Semaphore identity is generated in the CLIENT APP (not extension) due to service worker WASM limitations.
 
-    > 📌 `git commit -m "feat(extension): add Semaphore identity generation"`
+13. ✅ **Semaphore identity setup** — Generate identity in CLIENT app, store in localStorage, send to extension
 
-14. **Extension content script** — Detect web3ads components on page
-15. **zkProof generation** — When ad viewed, generate Semaphore proof
-16. **Proof relay** — Extension sends proof to component via postMessage
+    > Implemented: `client/src/pages/Viewer.tsx` uses `@semaphore-protocol/core`
 
-    > 📌 `git commit -m "feat(extension): add zkProof generation and relay"`
+14. ✅ **Extension content script** — Detect web3ads components, set data attribute (CSP-safe)
+
+15. ✅ **Identity storage** — Extension stores commitment + secret from client via postMessage
+
+16. ✅ **Wallet switching** — SWITCH button clears identity, opens client for new wallet link
+
+    > Implemented: Each wallet has own earnings, no transfer between wallets
 
 17. **Backend verification** — Verify zkProof, credit viewer earnings
 
