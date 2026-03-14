@@ -48,23 +48,12 @@ export function Web3Ad({
 
     // Fetch ad on mount
     useEffect(() => {
-        if (testMode) {
-            setAd({
-                campaignId: "test-campaign",
-                mediaUrl: `https://placehold.co/${dimensions.width}x${dimensions.height}/1a1a1a/ff3e00?text=Web3Ads+${type.toUpperCase()}`,
-                targetUrl: "https://web3ads.wtf",
-                type,
-                impressionToken: "test-token",
-            });
-            setLoading(false);
-            return;
-        }
-
         let cancelled = false;
 
         async function loadAd() {
             try {
-                const adData = await fetchAd({ publisherWallet, type, category });
+                // Pass testMode to API to get test ads from server
+                const adData = await fetchAd({ publisherWallet, type, category, testMode });
                 if (!cancelled) {
                     setAd(adData);
                     setLoading(false);
@@ -82,7 +71,7 @@ export function Web3Ad({
         return () => {
             cancelled = true;
         };
-    }, [publisherWallet, type, category, testMode, dimensions.width, dimensions.height, onError]);
+    }, [publisherWallet, type, category, testMode, onError]);
 
     // Record impression when ad is viewed
     const handleImpression = useCallback(async () => {

@@ -29,10 +29,37 @@ function hashIdentifier(value: string): string {
 // Serve an ad based on type and category
 router.get("/serve", async (req, res) => {
   try {
-    const { type, category, publisherWallet } = req.query;
+    const { type, category, publisherWallet, publisher, testMode } = req.query;
 
-    if (!publisherWallet || typeof publisherWallet !== "string") {
-      return res.status(400).json({ error: "publisherWallet is required" });
+    // Accept both 'publisher' (from SDK) and 'publisherWallet' for compatibility
+    const wallet = publisherWallet || publisher;
+    
+    if (!wallet || typeof wallet !== "string") {
+      return res.status(400).json({ error: "publisher or publisherWallet is required" });
+    }
+
+    // Test mode: return mock ads for development/testing
+    if (testMode === "true") {
+      const adType = (type as AdType) || AdType.BANNER;
+      const mockAds: Record<AdType, { width: number; height: number }> = {
+        [AdType.BANNER]: { width: 728, height: 90 },
+        [AdType.SQUARE]: { width: 300, height: 300 },
+        [AdType.SIDEBAR]: { width: 300, height: 600 },
+        [AdType.INTERSTITIAL]: { width: 800, height: 600 },
+      };
+      const dimensions = mockAds[adType] || mockAds[AdType.BANNER];
+      
+      return res.json({
+        ad: {
+          campaignId: "test-campaign-" + crypto.randomBytes(4).toString("hex"),
+          type: adType,
+          mediaUrl: `https://picsum.photos/${dimensions.width}/${dimensions.height}`,
+          targetUrl: "https://web3ads.wtf",
+          category: (category as string) || "test",
+          impressionToken: crypto.randomBytes(16).toString("hex"),
+          testMode: true,
+        },
+      });
     }
 
     // Build query conditions

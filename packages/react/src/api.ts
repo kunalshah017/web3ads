@@ -19,12 +19,14 @@ export async function fetchAd(params: {
   publisherWallet: string;
   type: AdType;
   category?: string;
+  testMode?: boolean;
 }): Promise<AdData | null> {
   try {
     const searchParams = new URLSearchParams({
       publisher: params.publisherWallet,
       type: params.type,
       ...(params.category && { category: params.category }),
+      ...(params.testMode && { testMode: "true" }),
     });
 
     const response = await fetch(
