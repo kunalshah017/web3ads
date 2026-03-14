@@ -1,15 +1,15 @@
 import { useAccount } from "wagmi";
 import { useState, useEffect, useRef } from "react";
-import { parseUnits } from "viem";
 import { WalletButton } from "../components/WalletButton";
 import {
-    useUSDCBalance,
-    useApproveUSDC,
-    useCreateCampaign,
-    useActivateCampaign,
+    useETHBalance,
+    useCreateCampaignV2,
+    useActivateCampaignV2,
     generateCampaignId,
-} from "../hooks/useContracts";
-import { AdType, CPM_RATES, AD_TYPE_LABELS } from "../contracts/Web3AdsCore";
+    calculateImpressions,
+    ethToUsd,
+} from "../hooks/useContractsV2";
+import { AdType, AD_TYPE_LABELS } from "../contracts/Web3AdsCoreV2";
 import { uploadAdImage } from "../lib/supabase";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
@@ -41,20 +41,20 @@ interface ServerCampaign {
 
 export function AdvertiserPage() {
     const { isConnected, address } = useAccount();
-    const { allowance, formattedBalance, refetchAllowance } = useUSDCBalance();
+    const { formattedBalance } = useETHBalance();
 
     // Form state
     const [campaignName, setCampaignName] = useState("");
     const [adType, setAdType] = useState<number>(AdType.BANNER);
-    const [budget, setBudget] = useState("");
+    const [budget, setBudget] = useState(""); // Now in ETH
     const [imagePreview, setImagePreview] = useState<string | null>(null);
     const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
     const [isUploading, setIsUploading] = useState(false);
     const [targetUrl, setTargetUrl] = useState("");
     const fileInputRef = useRef<HTMLInputElement>(null);
 
-    // Transaction state
-    const [step, setStep] = useState<"idle" | "approving" | "creating" | "activating">("idle");
+    // Transaction state - no more approval step for ETH
+    const [step, setStep] = useState<"idle" | "creating" | "activating">("idle");
     const [pendingCampaignId, setPendingCampaignId] = useState<`0x${string}` | null>(null);
 
     // Local campaigns (in real app this would come from API)
@@ -98,10 +98,9 @@ export function AdvertiserPage() {
         fetchCampaigns();
     }, [address]);
 
-    // Contract hooks
-    const { approve, isSuccess: approveSuccess } = useApproveUSDC();
-    const { createCampaign, isSuccess: createSuccess, reset: resetCreate } = useCreateCampaign();
-    const { activateCampaign, isSuccess: activateSuccess } = useActivateCampaign();
+    // Contract hooks - V2 ETH-based
+    const { createCampaign, isSuccess: createSuccess, reset: resetCreate } = useCreateCampaignV2();
+    const { activateCampaign, isSuccess: activateSuccess } = useActivateCampaignV2();
 
     // Handle image file selection
     const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -160,21 +159,6 @@ export function AdvertiserPage() {
             localStorage.setItem(`campaigns-${address}`, JSON.stringify(campaigns));
         }
     }, [campaigns, address]);
-
-    // Handle approve success
-    useEffect(() => {
-        if (approveSuccess && step === "approving") {
-            refetchAllowance();
-            setStep("creating");
-            if (pendingCampaignId) {
-                createCampaign({
-                    campaignId: pendingCampaignId,
-                    adType,
-                    budgetUSDC: Number(budget),
-                });
-            }
-        }
-    }, [approveSuccess, step]);
 
     // Handle create success
     useEffect(() => {
@@ -256,37 +240,29 @@ export function AdvertiserPage() {
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        if (!campaignName || !budget || Number(budget) < 10) {
-            alert("Please fill all required fields. Minimum budget is $10.");
+        if (!campaignName || !budget || Number(budget) <= 0) {
+            alert("Please fill all required fields with valid values.");
             return;
         }
 
-        const budgetInUnits = parseUnits(budget, 6);
         const campaignId = generateCampaignId(campaignName);
         setPendingCampaignId(campaignId);
 
-        // Check if we need approval
-        if (!allowance || allowance < budgetInUnits) {
-            setStep("approving");
-            approve(budgetInUnits);
-        } else {
-            setStep("creating");
-            createCampaign({
-                campaignId,
-                adType,
-                budgetUSDC: Number(budget),
-            });
-        }
+        // V2: Direct ETH deposit, no approval needed
+        setStep("creating");
+        createCampaign({
+            campaignId,
+            adType,
+            budgetETH: budget,
+        });
     };
 
     const isLoading = step !== "idle";
-    const buttonText = step === "approving"
-        ? "APPROVING USDC..."
-        : step === "creating"
+    const buttonText = step === "creating"
             ? "CREATING CAMPAIGN..."
             : step === "activating"
                 ? "ACTIVATING..."
-                : "CREATE & DEPOSIT USDC";
+                : "CREATE & DEPOSIT ETH";
 
     // Calculate stats
     const totalBudget = campaigns.reduce((sum, c) => sum + c.budget, 0);
@@ -319,8 +295,8 @@ export function AdvertiserPage() {
                         <p className="mt-2 font-mono text-xs uppercase text-zinc-500">{address}</p>
                     </div>
                     <div className="text-right">
-                        <p className="font-mono text-xs uppercase text-zinc-500">USDC BALANCE</p>
-                        <p className="font-mono text-2xl font-black text-white">${formattedBalance}</p>
+                        <p className="font-mono text-xs uppercase text-zinc-500">ETH BALANCE</p>
+                        <p className="font-mono text-2xl font-black text-white">{Number(formattedBalance).toFixed(4)} ETH</p>
                     </div>
                 </div>
 
@@ -354,28 +330,29 @@ export function AdvertiserPage() {
                                     className="mt-2 w-full border-4 border-zinc-700 bg-black px-4 py-3 font-mono text-sm text-white focus:border-[#ff3e00] focus:outline-none"
                                     disabled={isLoading}
                                 >
-                                    <option value={AdType.BANNER}>BANNER (728x90) - $2 CPM</option>
-                                    <option value={AdType.SQUARE}>SQUARE (300x300) - $3 CPM</option>
-                                    <option value={AdType.SIDEBAR}>SIDEBAR (300x600) - $4 CPM</option>
-                                    <option value={AdType.INTERSTITIAL}>INTERSTITIAL - $8 CPM</option>
+                                    <option value={AdType.BANNER}>BANNER (728x90) - 0.5 ETH CPM ($1000)</option>
+                                    <option value={AdType.SQUARE}>SQUARE (300x300) - 0.75 ETH CPM ($1500)</option>
+                                    <option value={AdType.SIDEBAR}>SIDEBAR (300x600) - 1.0 ETH CPM ($2000)</option>
+                                    <option value={AdType.INTERSTITIAL}>INTERSTITIAL - 2.0 ETH CPM ($4000)</option>
                                 </select>
                             </div>
                             <div>
                                 <label className="block font-mono text-xs font-bold uppercase text-zinc-400">
-                                    BUDGET (USDC) * <span className="text-zinc-600">MIN $10</span>
+                                    BUDGET (ETH) * <span className="text-zinc-600">Demo pricing</span>
                                 </label>
                                 <input
                                     type="number"
+                                    step="0.001"
                                     value={budget}
                                     onChange={(e) => setBudget(e.target.value)}
-                                    placeholder="100"
-                                    min="10"
+                                    placeholder="0.1"
+                                    min="0.001"
                                     className="mt-2 w-full border-4 border-zinc-700 bg-black px-4 py-3 font-mono text-sm text-white placeholder-zinc-600 focus:border-[#ff3e00] focus:outline-none"
                                     disabled={isLoading}
                                 />
-                                {budget && Number(budget) >= 10 && (
+                                {budget && Number(budget) > 0 && (
                                     <p className="mt-1 font-mono text-xs text-zinc-500">
-                                        ≈ {Math.floor((Number(budget) * 1000) / (CPM_RATES[adType as keyof typeof CPM_RATES] / 1e6)).toLocaleString()} impressions
+                                        ≈ {calculateImpressions(budget, adType).toLocaleString()} impressions | ~${ethToUsd(budget)} USD
                                     </p>
                                 )}
                             </div>

@@ -34,13 +34,14 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 | **Gasless Payment Page**   | ✅ Done | `/gasless` - Send ETH to any address using ad earnings, $0 gas        |
 | **Publisher Gasless**      | ✅ Done | `withdrawPublisherTo()` contract function for publisher gasless       |
 | **V2 Contract Deployment** | ✅ Done | Web3AdsCoreV2 + Forwarder deployed & verified on Base Sepolia         |
+| **Client V2 Update**       | ✅ Done | Advertiser page uses ETH-based V2 hooks, no USDC approval needed      |
+| **x402 MCP Server**        | ✅ Done | `packages/mcp-server/` with balance, payment, earnings tools          |
 
 ### 🔄 In Progress / Remaining
 
 | Component                | Status     | Notes                                            |
 | ------------------------ | ---------- | ------------------------------------------------ |
-| **Update Client for V2** | ⏳ Pending | Remove USDC, use ETH-based hooks                 |
-| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments via MCP server            |
+| **Publish MCP Package**  | ⏳ Optional| Publish `web3ads-mcp` to npm                     |
 
 ### 🏗️ Key Architecture Decisions Made
 
