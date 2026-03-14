@@ -378,7 +378,9 @@ export function generatePaymentInfo(
  * Create official Coinbase x402-express middleware for USDC payments
  * This follows the standard x402 protocol that HeyElsa and other services use
  */
-export function createOfficialX402Middleware(routes: Record<string, { price: string; description?: string }>) {
+export function createOfficialX402Middleware(
+  routes: Record<string, { price: string; description?: string }>,
+) {
   return x402PaymentMiddleware(
     PLATFORM_WALLET as `0x${string}`,
     Object.fromEntries(
@@ -391,8 +393,8 @@ export function createOfficialX402Middleware(routes: Record<string, { price: str
             description: config.description || `Access to ${path}`,
           },
         },
-      ])
-    )
+      ]),
+    ),
   );
 }
 

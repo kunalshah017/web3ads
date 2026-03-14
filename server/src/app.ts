@@ -8,7 +8,10 @@ import adsRouter from "./routes/ads.js";
 import publishersRouter from "./routes/publishers.js";
 import viewersRouter from "./routes/viewers.js";
 import rewardsRouter from "./routes/rewards.js";
-import { createOfficialX402Middleware, getPlatformWallet } from "./middleware/x402.js";
+import {
+  createOfficialX402Middleware,
+  getPlatformWallet,
+} from "./middleware/x402.js";
 
 dotenv.config();
 
@@ -29,13 +32,15 @@ app.get("/api/x402-info", (_req, res) => {
   res.json({
     protocol: "x402",
     version: "1.0.0",
-    description: "Web3Ads implements the Coinbase x402 payment protocol for AI agents",
+    description:
+      "Web3Ads implements the Coinbase x402 payment protocol for AI agents",
     paymentAddress: getPlatformWallet(),
     network: "base-sepolia",
     chainId: 84532,
     methods: {
       usdc: {
-        description: "Pay with USDC on Base Sepolia using standard x402 protocol",
+        description:
+          "Pay with USDC on Base Sepolia using standard x402 protocol",
         compatible: ["HeyElsa", "OpenClaw", "Coinbase CDP"],
       },
       web3adsBalance: {

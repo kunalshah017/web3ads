@@ -1,0 +1,38 @@
+{
+  "name": "web3ads-openclaw",
+  "version": "1.0.0",
+  "description": "OpenClaw skill-pack for Web3Ads - pay for x402 APIs using ad earnings",
+  "main": "scripts/index.js",
+  "types": "scripts/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "test": "npx tsx scripts/index.ts web3ads_check_balance '{\"wallet_address\": \"0x0000000000000000000000000000000000000000\"}'",
+    "lint": "eslint scripts/"
+  },
+  "keywords": [
+    "openclaw",
+    "x402",
+    "web3ads",
+    "ai-agents",
+    "micropayments",
+    "advertising"
+  ],
+  "author": "Web3Ads",
+  "license": "MIT",
+  "dependencies": {
+    "viem": "^2.21.0",
+    "dotenv": "^16.4.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0",
+    "tsx": "^4.19.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/web3ads/web3ads-openclaw"
+  }
+}
