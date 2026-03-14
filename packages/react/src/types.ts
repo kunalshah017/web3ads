@@ -63,34 +63,36 @@ export interface Web3AdProps {
  * Ad data returned from the API
  */
 export interface AdData {
-  id: string;
   campaignId: string;
-  advertiser: string;
-  imageUrl: string;
-  targetUrl: string;
   type: AdType;
-  cpmRate: number;
+  mediaUrl: string;
+  targetUrl: string;
+  category?: string;
+  impressionToken: string; // Used for fraud verification
 }
 
 /**
  * Impression request payload
  */
 export interface ImpressionPayload {
-  adId: string;
   campaignId: string;
   publisherWallet: string;
-  viewerCommitment?: string; // Set by extension if present
-  timestamp: number;
-  pageUrl: string;
+  impressionToken: string;
   viewDuration: number;
+  // Optional: zkProof data from extension
+  semaphoreNullifier?: string;
+  viewerCommitment?: string;
+  // Fingerprinting for fraud prevention
+  fingerprint?: string;
 }
 
 /**
  * Ad dimensions by type
  */
-export const AD_DIMENSIONS: Record<AdType, { width: number; height: number }> = {
-  banner: { width: 728, height: 90 },
-  square: { width: 300, height: 300 },
-  sidebar: { width: 300, height: 600 },
-  interstitial: { width: 640, height: 480 },
-};
+export const AD_DIMENSIONS: Record<AdType, { width: number; height: number }> =
+  {
+    banner: { width: 728, height: 90 },
+    square: { width: 300, height: 300 },
+    sidebar: { width: 300, height: 600 },
+    interstitial: { width: 640, height: 480 },
+  };

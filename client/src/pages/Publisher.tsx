@@ -124,11 +124,10 @@ export function PublisherPage() {
                             <button
                                 onClick={() => withdraw()}
                                 disabled={!canWithdraw || isPending || isConfirming}
-                                className={`mt-6 w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${
-                                    canWithdraw
-                                        ? "border-[#ff3e00] bg-[#ff3e00] text-white hover:bg-black"
-                                        : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
-                                }`}
+                                className={`mt-6 w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${canWithdraw
+                                    ? "border-[#ff3e00] bg-[#ff3e00] text-white hover:bg-black"
+                                    : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                                    }`}
                             >
                                 {isPending || isConfirming
                                     ? "WITHDRAWING..."

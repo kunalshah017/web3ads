@@ -27,12 +27,15 @@ export async function fetchAd(params: {
       ...(params.category && { category: params.category }),
     });
 
-    const response = await fetch(`${WEB3ADS_API_URL}/api/ads/serve?${searchParams}`, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
+    const response = await fetch(
+      `${WEB3ADS_API_URL}/api/ads/serve?${searchParams}`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+        },
       },
-    });
+    );
 
     if (!response.ok) {
       if (response.status === 404) {
@@ -41,7 +44,8 @@ export async function fetchAd(params: {
       throw new Error(`Failed to fetch ad: ${response.statusText}`);
     }
 
-    return await response.json();
+    const data = await response.json();
+    return data.ad || null;
   } catch (error) {
     console.error("[Web3Ads] Error fetching ad:", error);
     return null;
@@ -51,7 +55,9 @@ export async function fetchAd(params: {
 /**
  * Record an impression
  */
-export async function recordImpression(payload: ImpressionPayload): Promise<boolean> {
+export async function recordImpression(
+  payload: ImpressionPayload,
+): Promise<boolean> {
   try {
     const response = await fetch(`${WEB3ADS_API_URL}/api/ads/impression`, {
       method: "POST",
@@ -77,34 +83,57 @@ export async function recordImpression(payload: ImpressionPayload): Promise<bool
  */
 export function isExtensionInstalled(): boolean {
   // Extension injects a global flag
-  return typeof window !== "undefined" && !!(window as typeof window & { __WEB3ADS_EXTENSION__: boolean }).__WEB3ADS_EXTENSION__;
+  return (
+    typeof window !== "undefined" &&
+    !!(window as typeof window & { __WEB3ADS_EXTENSION__: boolean })
+      .__WEB3ADS_EXTENSION__
+  );
 }
 
 /**
- * Request viewer commitment from extension
+ * Extension zkProof data for verified impressions
  */
-export async function getViewerCommitment(): Promise<string | undefined> {
+export interface ExtensionProofData {
+  commitment?: string;
+  nullifier?: string;
+}
+
+/**
+ * Request zkProof data from extension (commitment + nullifier)
+ */
+export async function getExtensionProofData(): Promise<ExtensionProofData> {
   if (!isExtensionInstalled()) {
-    return undefined;
+    return {};
   }
 
   return new Promise((resolve) => {
     const handler = (event: MessageEvent) => {
-      if (event.data?.type === "WEB3ADS_COMMITMENT_RESPONSE") {
+      if (event.data?.type === "WEB3ADS_PROOF_RESPONSE") {
         window.removeEventListener("message", handler);
-        resolve(event.data.commitment);
+        resolve({
+          commitment: event.data.commitment,
+          nullifier: event.data.nullifier,
+        });
       }
     };
 
     window.addEventListener("message", handler);
 
-    // Request commitment from extension
-    window.postMessage({ type: "WEB3ADS_GET_COMMITMENT" }, "*");
+    // Request proof data from extension
+    window.postMessage({ type: "WEB3ADS_GET_PROOF" }, "*");
 
-    // Timeout after 1 second
+    // Timeout after 2 seconds
     setTimeout(() => {
       window.removeEventListener("message", handler);
-      resolve(undefined);
-    }, 1000);
+      resolve({});
+    }, 2000);
   });
+}
+
+/**
+ * @deprecated Use getExtensionProofData instead
+ */
+export async function getViewerCommitment(): Promise<string | undefined> {
+  const data = await getExtensionProofData();
+  return data.commitment;
 }

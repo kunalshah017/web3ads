@@ -303,10 +303,10 @@ export function AdvertiserPage() {
                                                 </div>
                                                 <span
                                                     className={`font-mono text-xs font-bold uppercase ${campaign.status === "active"
-                                                            ? "text-green-500"
-                                                            : campaign.status === "created"
-                                                                ? "text-yellow-500"
-                                                                : "text-zinc-500"
+                                                        ? "text-green-500"
+                                                        : campaign.status === "created"
+                                                            ? "text-yellow-500"
+                                                            : "text-zinc-500"
                                                         }`}
                                                 >
                                                     {campaign.status}

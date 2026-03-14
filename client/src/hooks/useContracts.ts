@@ -1,4 +1,9 @@
-import { useWriteContract, useReadContract, useAccount, useWaitForTransactionReceipt } from "wagmi";
+import {
+  useWriteContract,
+  useReadContract,
+  useAccount,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import { parseUnits, keccak256, toHex } from "viem";
 import { WEB3ADS_CORE_ABI, CPM_RATES } from "../contracts/Web3AdsCore";
 import { ERC20_ABI } from "../contracts/ERC20";
@@ -10,7 +15,9 @@ import { useCallback } from "react";
  */
 export function useUSDCBalance() {
   const { address, chainId } = useAccount();
-  const web3adsAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
+  const web3adsAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
   const usdcAddress = chainId ? getContractAddress(chainId, "usdc") : undefined;
 
   const { data: balance, refetch: refetchBalance } = useReadContract({
@@ -35,7 +42,9 @@ export function useUSDCBalance() {
     refetchBalance,
     refetchAllowance,
     formattedBalance: balance ? (Number(balance) / 1e6).toFixed(2) : "0.00",
-    formattedAllowance: allowance ? (Number(allowance) / 1e6).toFixed(2) : "0.00",
+    formattedAllowance: allowance
+      ? (Number(allowance) / 1e6).toFixed(2)
+      : "0.00",
   };
 }
 
@@ -44,11 +53,13 @@ export function useUSDCBalance() {
  */
 export function useApproveUSDC() {
   const { chainId } = useAccount();
-  const web3adsAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
+  const web3adsAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
   const usdcAddress = chainId ? getContractAddress(chainId, "usdc") : undefined;
 
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
@@ -56,7 +67,7 @@ export function useApproveUSDC() {
   const approve = useCallback(
     (amount: bigint) => {
       if (!usdcAddress || !web3adsAddress) return;
-      
+
       writeContract({
         address: usdcAddress as `0x${string}`,
         abi: ERC20_ABI,
@@ -64,7 +75,7 @@ export function useApproveUSDC() {
         args: [web3adsAddress, amount],
       });
     },
-    [writeContract, usdcAddress, web3adsAddress]
+    [writeContract, usdcAddress, web3adsAddress],
   );
 
   return {
@@ -91,10 +102,18 @@ export function generateCampaignId(name: string): `0x${string}` {
  */
 export function useCreateCampaign() {
   const { chainId } = useAccount();
-  const contractAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
-  
-  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
-  
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
+
+  const {
+    writeContract,
+    data: hash,
+    isPending,
+    error,
+    reset,
+  } = useWriteContract();
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
@@ -106,8 +125,10 @@ export function useCreateCampaign() {
       budgetUSDC: number;
     }) => {
       if (!contractAddress) return;
-      
-      const cpmRate = BigInt(CPM_RATES[params.adType as keyof typeof CPM_RATES]);
+
+      const cpmRate = BigInt(
+        CPM_RATES[params.adType as keyof typeof CPM_RATES],
+      );
       const budget = parseUnits(params.budgetUSDC.toString(), 6);
 
       writeContract({
@@ -117,7 +138,7 @@ export function useCreateCampaign() {
         args: [params.campaignId, params.adType, cpmRate, budget],
       });
     },
-    [writeContract, contractAddress]
+    [writeContract, contractAddress],
   );
 
   return {
@@ -136,10 +157,12 @@ export function useCreateCampaign() {
  */
 export function useActivateCampaign() {
   const { chainId } = useAccount();
-  const contractAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
-  
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
+
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
@@ -147,7 +170,7 @@ export function useActivateCampaign() {
   const activateCampaign = useCallback(
     (campaignId: `0x${string}`) => {
       if (!contractAddress) return;
-      
+
       writeContract({
         address: contractAddress,
         abi: WEB3ADS_CORE_ABI,
@@ -155,7 +178,7 @@ export function useActivateCampaign() {
         args: [campaignId],
       });
     },
-    [writeContract, contractAddress]
+    [writeContract, contractAddress],
   );
 
   return {
@@ -173,7 +196,9 @@ export function useActivateCampaign() {
  */
 export function usePublisherBalance() {
   const { address, chainId } = useAccount();
-  const contractAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
 
   const { data: balance, refetch } = useReadContract({
     address: contractAddress,
@@ -195,17 +220,19 @@ export function usePublisherBalance() {
  */
 export function usePublisherWithdraw() {
   const { chainId } = useAccount();
-  const contractAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
-  
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
+
   const { writeContract, data: hash, isPending, error } = useWriteContract();
-  
+
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const withdraw = useCallback(() => {
     if (!contractAddress) return;
-    
+
     writeContract({
       address: contractAddress,
       abi: WEB3ADS_CORE_ABI,
@@ -226,9 +253,14 @@ export function usePublisherWithdraw() {
 /**
  * Hook to read campaign data
  */
-export function useCampaign(advertiser: `0x${string}` | undefined, campaignId: `0x${string}` | undefined) {
+export function useCampaign(
+  advertiser: `0x${string}` | undefined,
+  campaignId: `0x${string}` | undefined,
+) {
   const { chainId } = useAccount();
-  const contractAddress = chainId ? getContractAddress(chainId, "web3AdsCore") : undefined;
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
 
   const { data, refetch, isLoading } = useReadContract({
     address: contractAddress,
