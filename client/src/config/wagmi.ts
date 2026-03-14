@@ -23,7 +23,7 @@ export const config = getDefaultConfig({
   chains: [baseSepolia, base],
   transports: {
     [baseSepolia.id]: http(
-      import.meta.env.VITE_BASE_SEPOLIA_RPC || "https://sepolia.base.org"
+      import.meta.env.VITE_BASE_SEPOLIA_RPC || "https://sepolia.base.org",
     ),
     [base.id]: http("https://mainnet.base.org"),
   },
@@ -33,7 +33,7 @@ export const config = getDefaultConfig({
 // Get contract address for current chain
 export function getContractAddress(
   chainId: number,
-  contract: "web3AdsCore" | "usdc"
+  contract: "web3AdsCore" | "usdc",
 ): `0x${string}` {
   if (chainId === baseSepolia.id) {
     return CONTRACT_ADDRESSES.baseSepolia[contract] as `0x${string}`;
