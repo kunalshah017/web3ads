@@ -19,14 +19,13 @@ jobs:
             - name: Setup Node.js
               uses: actions/setup-node@v4
               with:
-                  node-version: "20"
+                  node-version: "22"
 
             - name: Setup pnpm
               uses: pnpm/action-setup@v4
 
             - name: Install dependencies
-              working-directory: ./server
-              run: pnpm install --frozen-lockfile
+              run: pnpm install --frozen-lockfile --filter=server...
 
             - name: Build TypeScript
               working-directory: ./server
