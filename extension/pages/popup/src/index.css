@@ -1,6 +1,16 @@
 @import '@extension/ui/global.css';
 
+html,
 body {
-  width: 300px;
-  height: 260px;
+  width: 380px;
+  min-height: 520px;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  background: #0a0a0a;
+}
+
+#app-container {
+  width: 100%;
+  min-height: 100%;
 }

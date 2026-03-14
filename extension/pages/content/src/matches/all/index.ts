@@ -2,17 +2,18 @@
  * Web3Ads Content Script
  *
  * Runs on all pages to:
- * 1. Inject the __WEB3ADS_EXTENSION__ flag
+ * 1. Signal extension presence via data attribute + postMessage
  * 2. Listen for proof requests from Web3Ad SDK
  * 3. Relay proof data from background script
  */
 
-// Inject the extension detection flag into the page
-function injectExtensionFlag() {
-  const script = document.createElement('script');
-  script.textContent = `window.__WEB3ADS_EXTENSION__ = true;`;
-  (document.head || document.documentElement).appendChild(script);
-  script.remove();
+// Signal extension presence (CSP-safe - no inline script)
+function signalExtensionPresence() {
+  // Set data attribute on document element (content scripts can do this)
+  document.documentElement.setAttribute('data-web3ads-extension', 'true');
+
+  // Also post a message for scripts that are listening
+  window.postMessage({ type: 'WEB3ADS_EXTENSION_READY' }, '*');
 }
 
 // Listen for messages from the page (Web3Ad SDK)
@@ -20,6 +21,12 @@ function setupMessageListener() {
   window.addEventListener('message', async event => {
     // Only accept messages from the same frame
     if (event.source !== window) return;
+
+    // Handle extension check request
+    if (event.data?.type === 'WEB3ADS_CHECK_EXTENSION') {
+      window.postMessage({ type: 'WEB3ADS_EXTENSION_READY' }, '*');
+      return;
+    }
 
     // Handle proof request from SDK
     if (event.data?.type === 'WEB3ADS_GET_PROOF') {
@@ -87,9 +94,12 @@ function setupMessageListener() {
       }
 
       try {
+        // Pass identity data from client app to background script
         const response = await chrome.runtime.sendMessage({
           type: 'LINK_WALLET',
           walletAddress: event.data.walletAddress,
+          commitment: event.data.commitment, // Semaphore commitment from client
+          secret: event.data.secret, // Semaphore secret (exported identity) from client
         });
 
         window.postMessage(
@@ -97,6 +107,7 @@ function setupMessageListener() {
             type: 'WEB3ADS_WALLET_LINKED',
             success: response.success,
             commitment: response.commitment,
+            error: response.error,
           },
           '*',
         );
@@ -106,6 +117,7 @@ function setupMessageListener() {
           {
             type: 'WEB3ADS_WALLET_LINKED',
             success: false,
+            error: String(error),
           },
           '*',
         );
@@ -141,5 +153,5 @@ function setupMessageListener() {
 
 // Initialize
 console.log('[Web3Ads] Content script loaded');
-injectExtensionFlag();
+signalExtensionPresence();
 setupMessageListener();

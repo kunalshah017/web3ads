@@ -1,16 +1,19 @@
 import 'webextension-polyfill';
-import { Identity } from '@semaphore-protocol/core';
 
 /**
  * Web3Ads Background Service Worker
  *
- * Manages Semaphore identity for privacy-preserving ad tracking.
+ * Lightweight identity storage and ad tracking.
+ * Semaphore identity is generated on the client app (web3ads.wtf/viewer)
+ * and sent here for storage. This avoids service worker WASM limitations.
+ *
  * Viewers earn 20% of ad revenue through zkProof verification.
  */
 
 // Storage keys
 const STORAGE_KEYS = {
-  IDENTITY_SECRET: 'web3ads_identity_secret',
+  IDENTITY_COMMITMENT: 'web3ads_identity_commitment',
+  IDENTITY_SECRET: 'web3ads_identity_secret', // Exported secret from Semaphore Identity
   WALLET_ADDRESS: 'web3ads_wallet_address',
   IS_REGISTERED: 'web3ads_is_registered',
   TOTAL_EARNINGS: 'web3ads_total_earnings',
@@ -21,47 +24,58 @@ const STORAGE_KEYS = {
 const API_URL = process.env.WEB3ADS_API_URL || 'http://localhost:3001';
 
 /**
- * Initialize or restore Semaphore identity
+ * Helper to convert ArrayBuffer to hex string
  */
-async function getOrCreateIdentity(): Promise<Identity> {
-  const result = await chrome.storage.local.get(STORAGE_KEYS.IDENTITY_SECRET);
-
-  if (result[STORAGE_KEYS.IDENTITY_SECRET]) {
-    // Restore existing identity from secret
-    return new Identity(result[STORAGE_KEYS.IDENTITY_SECRET]);
-  }
-
-  // Create new identity
-  const identity = new Identity();
-
-  // Store the secret for persistence
-  await chrome.storage.local.set({
-    [STORAGE_KEYS.IDENTITY_SECRET]: identity.export(),
-  });
-
-  return identity;
+function bufferToHex(buffer: ArrayBuffer): string {
+  return Array.from(new Uint8Array(buffer))
+    .map(b => b.toString(16).padStart(2, '0'))
+    .join('');
 }
 
 /**
- * Get current identity commitment
+ * Check if identity exists (set from client app)
  */
-async function getCommitment(): Promise<string> {
-  const identity = await getOrCreateIdentity();
-  return identity.commitment.toString();
+async function hasIdentity(): Promise<boolean> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.IDENTITY_COMMITMENT);
+  return !!result[STORAGE_KEYS.IDENTITY_COMMITMENT];
+}
+
+/**
+ * Get stored commitment (must be set from client app first)
+ */
+async function getCommitment(): Promise<string | null> {
+  const result = await chrome.storage.local.get(STORAGE_KEYS.IDENTITY_COMMITMENT);
+  return result[STORAGE_KEYS.IDENTITY_COMMITMENT] || null;
+}
+
+/**
+ * Store identity from client app
+ */
+async function storeIdentity(commitment: string, secret: string): Promise<void> {
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.IDENTITY_COMMITMENT]: commitment,
+    [STORAGE_KEYS.IDENTITY_SECRET]: secret,
+  });
 }
 
 /**
  * Generate nullifier for a specific ad view (prevents double-counting)
+ * Uses stored secret + adId to create unique nullifier
  */
-async function generateNullifier(adId: string): Promise<string> {
-  const identity = await getOrCreateIdentity();
-  // Use the ad ID as a scope/external nullifier
-  // This creates a unique, deterministic nullifier per ad per identity
+async function generateNullifier(adId: string): Promise<string | null> {
+  const result = await chrome.storage.local.get([STORAGE_KEYS.IDENTITY_COMMITMENT, STORAGE_KEYS.IDENTITY_SECRET]);
+
+  if (!result[STORAGE_KEYS.IDENTITY_COMMITMENT]) {
+    return null;
+  }
+
+  // Use secret + adId for nullifier (deterministic per ad per identity)
   const encoder = new TextEncoder();
-  const data = encoder.encode(adId + identity.commitment.toString());
+  const data = encoder.encode(
+    adId + (result[STORAGE_KEYS.IDENTITY_SECRET] || result[STORAGE_KEYS.IDENTITY_COMMITMENT]),
+  );
   const hashBuffer = await crypto.subtle.digest('SHA-256', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  return bufferToHex(hashBuffer);
 }
 
 /**
@@ -124,6 +138,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
       case 'GET_PROOF_DATA': {
         // Content script requesting proof data for impression
         const commitment = await getCommitment();
+        if (!commitment) {
+          sendResponse({ error: 'No identity set. Please link wallet on web3ads.wtf/viewer' });
+          break;
+        }
         const nullifier = await generateNullifier(message.adId);
         await trackViewedAd(message.adId);
 
@@ -136,7 +154,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 
       case 'GET_STATUS': {
         // Popup requesting current status
-        const identity = await getOrCreateIdentity();
+        const commitment = await getCommitment();
         const storage = await chrome.storage.local.get([
           STORAGE_KEYS.IS_REGISTERED,
           STORAGE_KEYS.WALLET_ADDRESS,
@@ -145,7 +163,8 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         ]);
 
         sendResponse({
-          commitment: identity.commitment.toString(),
+          hasIdentity: !!commitment,
+          commitment: commitment || null,
           isRegistered: storage[STORAGE_KEYS.IS_REGISTERED] || false,
           walletAddress: storage[STORAGE_KEYS.WALLET_ADDRESS] || null,
           totalEarnings: storage[STORAGE_KEYS.TOTAL_EARNINGS] || 0,
@@ -154,19 +173,42 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
         break;
       }
 
-      case 'REGISTER': {
-        // User registering from popup
+      case 'STORE_IDENTITY': {
+        // Client app sending Semaphore identity to store
+        // This is called from web3ads.wtf/viewer via content script
+        if (message.commitment && message.secret) {
+          await storeIdentity(message.commitment, message.secret);
+          sendResponse({ success: true });
+        } else {
+          sendResponse({ error: 'Missing commitment or secret' });
+        }
+        break;
+      }
+
+      case 'LINK_WALLET': {
+        // Linking wallet (from client app via content script)
+        if (message.commitment && message.secret) {
+          // Store identity first
+          await storeIdentity(message.commitment, message.secret);
+        }
+        // Then register with server
         const success = await registerViewer(message.walletAddress);
         const commitment = await getCommitment();
         sendResponse({ success, commitment });
         break;
       }
 
-      case 'LINK_WALLET': {
-        // Linking wallet to existing identity (from website)
-        const success = await registerViewer(message.walletAddress);
-        const commitment = await getCommitment();
-        sendResponse({ success, commitment });
+      case 'CLEAR_IDENTITY': {
+        // Clear all identity data (for switching wallets)
+        await chrome.storage.local.remove([
+          STORAGE_KEYS.IDENTITY_COMMITMENT,
+          STORAGE_KEYS.IDENTITY_SECRET,
+          STORAGE_KEYS.WALLET_ADDRESS,
+          STORAGE_KEYS.IS_REGISTERED,
+          STORAGE_KEYS.TOTAL_EARNINGS,
+          STORAGE_KEYS.VIEWED_ADS,
+        ]);
+        sendResponse({ success: true });
         break;
       }
 
@@ -182,12 +224,9 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
 // Initialize on install
 chrome.runtime.onInstalled.addListener(async () => {
   console.log('[Web3Ads] Extension installed');
+  console.log('[Web3Ads] Visit web3ads.wtf/viewer to link your wallet and start earning');
 
-  // Create identity immediately
-  const identity = await getOrCreateIdentity();
-  console.log('[Web3Ads] Identity commitment:', identity.commitment.toString());
-
-  // Set extension badge
+  // Set extension badge to prompt user
   chrome.action.setBadgeBackgroundColor({ color: '#ff3e00' });
   chrome.action.setBadgeText({ text: 'NEW' });
 });
