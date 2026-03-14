@@ -259,10 +259,10 @@ export function AdvertiserPage() {
 
     const isLoading = step !== "idle";
     const buttonText = step === "creating"
-            ? "CREATING CAMPAIGN..."
-            : step === "activating"
-                ? "ACTIVATING..."
-                : "CREATE & DEPOSIT ETH";
+        ? "CREATING CAMPAIGN..."
+        : step === "activating"
+            ? "ACTIVATING..."
+            : "CREATE & DEPOSIT ETH";
 
     // Calculate stats
     const totalBudget = campaigns.reduce((sum, c) => sum + c.budget, 0);

@@ -17,7 +17,7 @@ import { useCallback } from "react";
  * Get V2 contract address for chain
  */
 export function getV2ContractAddress(
-  chainId: number | undefined
+  chainId: number | undefined,
 ): `0x${string}` | undefined {
   if (!chainId) return undefined;
   return WEB3ADS_V2_ADDRESSES[chainId as keyof typeof WEB3ADS_V2_ADDRESSES];
@@ -49,14 +49,24 @@ export function useCreateCampaignV2() {
   const { chainId } = useAccount();
   const contractAddress = getV2ContractAddress(chainId);
 
-  const { writeContract, data: hash, isPending, error, reset } = useWriteContract();
+  const {
+    writeContract,
+    data: hash,
+    isPending,
+    error,
+    reset,
+  } = useWriteContract();
 
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
     hash,
   });
 
   const createCampaign = useCallback(
-    (params: { campaignId: `0x${string}`; adType: number; budgetETH: string }) => {
+    (params: {
+      campaignId: `0x${string}`;
+      adType: number;
+      budgetETH: string;
+    }) => {
       if (!contractAddress) return;
 
       const budgetWei = parseEther(params.budgetETH);
@@ -69,7 +79,7 @@ export function useCreateCampaignV2() {
         value: budgetWei,
       });
     },
-    [writeContract, contractAddress]
+    [writeContract, contractAddress],
   );
 
   return {
@@ -107,7 +117,7 @@ export function useActivateCampaignV2() {
         args: [campaignId],
       });
     },
-    [writeContract, contractAddress]
+    [writeContract, contractAddress],
   );
 
   return {
@@ -144,7 +154,7 @@ export function usePauseCampaignV2() {
         args: [campaignId],
       });
     },
-    [writeContract, contractAddress]
+    [writeContract, contractAddress],
   );
 
   return {
@@ -162,7 +172,7 @@ export function usePauseCampaignV2() {
  */
 export function useCampaignV2(
   advertiser: `0x${string}` | undefined,
-  campaignId: `0x${string}` | undefined
+  campaignId: `0x${string}` | undefined,
 ) {
   const { chainId } = useAccount();
   const contractAddress = getV2ContractAddress(chainId);
@@ -252,7 +262,7 @@ export function generateCampaignId(name: string): `0x${string}` {
  */
 export function calculateImpressions(
   budgetETH: string,
-  adType: number
+  adType: number,
 ): number {
   const budgetWei = parseEther(budgetETH || "0");
   const cpmRate = CPM_RATES_ETH[adType as keyof typeof CPM_RATES_ETH];

@@ -39,9 +39,9 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ### 🔄 In Progress / Remaining
 
-| Component                | Status     | Notes                                            |
-| ------------------------ | ---------- | ------------------------------------------------ |
-| **Publish MCP Package**  | ⏳ Optional| Publish `web3ads-mcp` to npm                     |
+| Component               | Status      | Notes                        |
+| ----------------------- | ----------- | ---------------------------- |
+| **Publish MCP Package** | ⏳ Optional | Publish `web3ads-mcp` to npm |
 
 ### 🏗️ Key Architecture Decisions Made
 
@@ -55,12 +55,12 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ### 📋 Deployed Addresses (Base Sepolia)
 
-| Contract         | Address                                      | Notes           |
-| ---------------- | -------------------------------------------- | --------------- |
-| Web3AdsCore V1   | `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872` | USDC-based (old)|
-| Web3AdsCoreV2    | `0xff7DB767900a8151a1D55b3cC4C72Eb0DA482d1F` | ETH-based (new) |
-| Forwarder        | `0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E` | EIP-2771        |
-| Backend Signer   | `0x3B2F1274dA63a64bBd22ba801ce449A313192ee6` |                 |
+| Contract       | Address                                      | Notes            |
+| -------------- | -------------------------------------------- | ---------------- |
+| Web3AdsCore V1 | `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872` | USDC-based (old) |
+| Web3AdsCoreV2  | `0xff7DB767900a8151a1D55b3cC4C72Eb0DA482d1F` | ETH-based (new)  |
+| Forwarder      | `0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E` | EIP-2771         |
+| Backend Signer | `0x3B2F1274dA63a64bBd22ba801ce449A313192ee6` |                  |
 
 ---
 
@@ -109,6 +109,7 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 ## Monetization Model (CPM-Based)
 
 ### Revenue Distribution
+
 - **Publisher:** 50%
 - **Viewer:** 20%
 - **Platform:** 30%
@@ -125,6 +126,7 @@ Goal: Viewer earns ~$1 after viewing 5 banner ads
 | Interstitial | $4,000   | $4.00   | $10.00            | **$4.00**      |
 
 **ETH Values (at $2000/ETH):**
+
 - Banner CPM: 0.5 ETH
 - Square CPM: 0.75 ETH
 - Sidebar CPM: 1.0 ETH
@@ -132,19 +134,19 @@ Goal: Viewer earns ~$1 after viewing 5 banner ads
 
 ### Production Pricing (Real-world)
 
-| Ad Type      | CPM Rate | Cost/Ad  | Publisher Share | Viewer Share |
-| ------------ | -------- | -------- | --------------- | ------------ |
-| Banner       | $2       | $0.002   | $1.00/1000      | $0.40/1000   |
-| Square       | $3       | $0.003   | $1.50/1000      | $0.60/1000   |
-| Sidebar      | $4       | $0.004   | $2.00/1000      | $0.80/1000   |
-| Interstitial | $8       | $0.008   | $4.00/1000      | $1.60/1000   |
+| Ad Type      | CPM Rate | Cost/Ad | Publisher Share | Viewer Share |
+| ------------ | -------- | ------- | --------------- | ------------ |
+| Banner       | $2       | $0.002  | $1.00/1000      | $0.40/1000   |
+| Square       | $3       | $0.003  | $1.50/1000      | $0.60/1000   |
+| Sidebar      | $4       | $0.004  | $2.00/1000      | $0.80/1000   |
+| Interstitial | $8       | $0.008  | $4.00/1000      | $1.60/1000   |
 
 ### Withdrawal Thresholds
 
-| Mode       | Min Withdrawal | Notes                              |
-| ---------- | -------------- | ---------------------------------- |
-| Demo       | 1 wei (~$0)    | Instant withdrawal for any amount  |
-| Production | 0.0001 ETH     | ~$0.20 at $2000/ETH                |
+| Mode       | Min Withdrawal | Notes                             |
+| ---------- | -------------- | --------------------------------- |
+| Demo       | 1 wei (~$0)    | Instant withdrawal for any amount |
+| Production | 0.0001 ETH     | ~$0.20 at $2000/ETH               |
 
 ---
 
@@ -330,16 +332,19 @@ Contract sends ETH to viewer's wallet
 ```
 
 **Why this works:**
+
 - Gas cost on Base L2: ~$0.01 per transaction
 - Backend wallet pre-funded with ETH
 - No need for viewer to have any ETH at all
 
 **Contract Support (Web3AdsCoreV2):**
+
 - EIP-2771 trusted forwarder pattern (for future full gasless)
 - Backend signature verification for withdrawals
 - `_msgSender()` override extracts real user from forwarder calls
 
 **Server Implementation:**
+
 ```typescript
 // server/src/blockchain/index.ts
 export async function withdrawViewerOnChain(params: {
@@ -348,7 +353,7 @@ export async function withdrawViewerOnChain(params: {
 }): Promise<Hash | null> {
   // 1. Sign message: keccak256(commitment + recipient)
   const signature = await signViewerWithdrawal(params);
-  
+
   // 2. Call contract (backend pays gas)
   const hash = await walletClient.writeContract({
     address: WEB3ADS_CORE_V2_ADDRESS,
@@ -356,7 +361,7 @@ export async function withdrawViewerOnChain(params: {
     functionName: "withdrawViewer",
     args: [commitment, recipient, signature],
   });
-  
+
   return hash;
 }
 ```
@@ -406,14 +411,16 @@ server.tool(
     walletAddress: { type: "string", description: "User's wallet address" },
   },
   async ({ walletAddress }) => {
-    const response = await fetch(`${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`);
+    const response = await fetch(
+      `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`,
+    );
     const data = await response.json();
     return {
       balanceETH: data.total.pending,
       balanceUSD: data.total.pending * 2000, // Approximate
       canWithdraw: data.canWithdraw,
     };
-  }
+  },
 );
 
 // Tool 2: Make payment using ad earnings
@@ -436,7 +443,7 @@ server.tool(
       }),
     });
     return await response.json();
-  }
+  },
 );
 
 // Tool 3: Get earnings breakdown
@@ -447,9 +454,11 @@ server.tool(
     walletAddress: { type: "string" },
   },
   async ({ walletAddress }) => {
-    const response = await fetch(`${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`);
+    const response = await fetch(
+      `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`,
+    );
     return await response.json();
-  }
+  },
 );
 ```
 
@@ -734,20 +743,20 @@ After deploying Web3AdsCoreV2 + Forwarder to Base Sepolia:
 
 - [x] `contracts/src/Web3AdsCoreV2.sol` - ETH-based contract
 - [x] `contracts/src/Forwarder.sol` - EIP-2771 forwarder
-- [x] `contracts/script/DeployV2.s.sol` - Deployment script  
+- [x] `contracts/script/DeployV2.s.sol` - Deployment script
 - [x] `server/src/blockchain/index.ts` - V2 ABI + withdrawViewerOnChain
 - [x] `server/src/routes/rewards.ts` - ETH-based withdrawals
 - [x] `client/src/pages/Info.tsx` - Demo vs Production pricing
 
 ### ⏳ Pending After Deployment
 
-| File | Change Needed |
-|------|---------------|
-| `server/.env` | Add `WEB3ADS_CORE_V2_ADDRESS=0x...` |
-| `client/src/config/wagmi.ts` | Add `web3AdsCoreV2` address, keep V1 for reference |
+| File                                  | Change Needed                                                    |
+| ------------------------------------- | ---------------------------------------------------------------- |
+| `server/.env`                         | Add `WEB3ADS_CORE_V2_ADDRESS=0x...`                              |
+| `client/src/config/wagmi.ts`          | Add `web3AdsCoreV2` address, keep V1 for reference               |
 | `client/src/contracts/Web3AdsCore.ts` | Update ABI: add `payable` to createCampaign, remove paymentToken |
-| `client/src/hooks/useContracts.ts` | Add `useETHDeposit()` hook, keep USDC hooks for V1 compatibility |
-| `client/src/pages/Advertiser.tsx` | Use `{ value: amount }` instead of USDC approve flow |
+| `client/src/hooks/useContracts.ts`    | Add `useETHDeposit()` hook, keep USDC hooks for V1 compatibility |
+| `client/src/pages/Advertiser.tsx`     | Use `{ value: amount }` instead of USDC approve flow             |
 
 ### Deployment Commands
 

@@ -59,12 +59,14 @@ server.tool(
   "web3ads_check_balance",
   "Check user's Web3Ads earnings balance. Returns ETH balance from viewing and publishing ads that can be used for payments.",
   {
-    walletAddress: z.string().describe("User's Ethereum wallet address (0x...)"),
+    walletAddress: z
+      .string()
+      .describe("User's Ethereum wallet address (0x...)"),
   },
   async ({ walletAddress }) => {
     try {
       const response = await fetch(
-        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`
+        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`,
       );
 
       if (!response.ok) {
@@ -116,7 +118,7 @@ server.tool(
         ],
       };
     }
-  }
+  },
 );
 
 /**
@@ -146,7 +148,7 @@ server.tool(
     try {
       // First check balance
       const balanceResponse = await fetch(
-        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`
+        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`,
       );
       const balanceData = (await balanceResponse.json()) as BalanceResponse;
 
@@ -226,7 +228,7 @@ server.tool(
         ],
       };
     }
-  }
+  },
 );
 
 /**
@@ -242,7 +244,7 @@ server.tool(
   async ({ walletAddress }) => {
     try {
       const response = await fetch(
-        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`
+        `${API_URL}/api/rewards/balance?walletAddress=${walletAddress}`,
       );
 
       if (!response.ok) {
@@ -314,7 +316,7 @@ server.tool(
         ],
       };
     }
-  }
+  },
 );
 
 /**
@@ -372,7 +374,7 @@ server.tool(
         },
       ],
     };
-  }
+  },
 );
 
 // Start server

@@ -54,9 +54,11 @@ The MCP server is designed for x402 integration, allowing AI agents to pay for A
 Check user's available ad earnings.
 
 **Input:**
+
 - `walletAddress` (string): User's Ethereum wallet address
 
 **Output:**
+
 ```json
 {
   "balanceETH": 0.001,
@@ -76,12 +78,14 @@ Check user's available ad earnings.
 Pay for services using ad earnings (gasless).
 
 **Input:**
+
 - `walletAddress` (string): Wallet with ad earnings
 - `amountETH` (number): Amount to pay
 - `recipientAddress` (string): Service provider's address
 - `memo` (string, optional): Payment description
 
 **Output:**
+
 ```json
 {
   "success": true,
@@ -98,9 +102,11 @@ Pay for services using ad earnings (gasless).
 Get detailed earnings breakdown.
 
 **Input:**
+
 - `walletAddress` (string): User's wallet address
 
 **Output:**
+
 ```json
 {
   "summary": {
@@ -118,6 +124,7 @@ Get detailed earnings breakdown.
 Get platform information.
 
 **Output:**
+
 ```json
 {
   "name": "Web3Ads",
@@ -130,8 +137,8 @@ Get platform information.
 
 ## Environment Variables
 
-| Variable | Description | Default |
-|----------|-------------|---------|
+| Variable          | Description          | Default                 |
+| ----------------- | -------------------- | ----------------------- |
 | `WEB3ADS_API_URL` | Web3Ads API endpoint | `http://localhost:3001` |
 
 ## Development
@@ -155,6 +162,7 @@ pnpm typecheck
 Currently deployed on **Base Sepolia** (testnet).
 
 Contracts:
+
 - Web3AdsCoreV2: `0xff7DB767900a8151a1D55b3cC4C72Eb0DA482d1F`
 - Forwarder: `0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E`
 
