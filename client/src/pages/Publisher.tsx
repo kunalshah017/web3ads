@@ -1,16 +1,54 @@
 import { useAccount } from "wagmi";
 import { WalletButton } from "../components/WalletButton";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { usePublisherBalance, usePublisherWithdraw } from "../hooks/useContracts";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
+interface PublisherStats {
+    totalViews: number;
+    totalEarnings: number;
+    pendingBalance: number;
+    claimedBalance: number;
+}
 
 export function PublisherPage() {
     const { isConnected, address } = useAccount();
     const [selectedType, setSelectedType] = useState("banner");
     const { balance, formattedBalance, refetch } = usePublisherBalance();
     const { withdraw, isPending, isConfirming, isSuccess } = usePublisherWithdraw();
+    const [stats, setStats] = useState<PublisherStats | null>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
 
     const MIN_WITHDRAWAL = 10_000_000n; // 10 USDC
     const canWithdraw = balance && balance >= MIN_WITHDRAWAL;
+
+    // Fetch publisher stats from API
+    useEffect(() => {
+        if (!address) return;
+
+        const fetchStats = async () => {
+            setStatsLoading(true);
+            try {
+                const res = await fetch(`${API_URL}/api/publishers/profile?walletAddress=${address}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    setStats({
+                        totalViews: data.publisher?.totalViews || 0,
+                        totalEarnings: Number(data.publisher?.totalEarnings || 0),
+                        pendingBalance: Number(data.publisher?.pendingBalance || 0),
+                        claimedBalance: Number(data.publisher?.claimedBalance || 0),
+                    });
+                }
+            } catch (err) {
+                console.error("Failed to fetch publisher stats:", err);
+            } finally {
+                setStatsLoading(false);
+            }
+        };
+
+        fetchStats();
+    }, [address]);
 
     const embedCode = `import { Web3Ad } from 'web3ads-react';
 
@@ -109,15 +147,15 @@ export function PublisherPage() {
                             <div className="mt-6 space-y-2 border-t-2 border-zinc-700 pt-4">
                                 <div className="flex justify-between font-mono text-xs uppercase">
                                     <span className="text-zinc-500">TOTAL VIEWS</span>
-                                    <span className="text-white">0</span>
+                                    <span className="text-white">{statsLoading ? "..." : (stats?.totalViews || 0).toLocaleString()}</span>
                                 </div>
                                 <div className="flex justify-between font-mono text-xs uppercase">
                                     <span className="text-zinc-500">TOTAL EARNED</span>
-                                    <span className="text-white">${formattedBalance}</span>
+                                    <span className="text-white">${statsLoading ? "..." : (stats?.totalEarnings || 0).toFixed(4)}</span>
                                 </div>
                                 <div className="flex justify-between font-mono text-xs uppercase">
                                     <span className="text-zinc-500">CLAIMED</span>
-                                    <span className="text-white">$0.00</span>
+                                    <span className="text-white">${statsLoading ? "..." : (stats?.claimedBalance || 0).toFixed(4)}</span>
                                 </div>
                             </div>
 

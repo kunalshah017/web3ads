@@ -11,15 +11,31 @@ import {
 } from "../hooks/useContracts";
 import { AdType, CPM_RATES, AD_TYPE_LABELS } from "../contracts/Web3AdsCore";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+
 interface LocalCampaign {
     id: `0x${string}`;
     name: string;
     adType: number;
     budget: number;
+    spent: number;
+    impressions: number;
     imageUrl: string;
     targetUrl: string;
-    status: "pending" | "created" | "active";
+    status: "pending" | "created" | "active" | "paused";
     createdAt: number;
+}
+
+interface ServerCampaign {
+    id: string;
+    name: string;
+    adType: string;
+    budget: string;
+    spent: string;
+    status: string;
+    mediaUrl: string;
+    targetUrl: string;
+    _count?: { impressions: number };
 }
 
 export function AdvertiserPage() {
@@ -38,10 +54,45 @@ export function AdvertiserPage() {
     const [pendingCampaignId, setPendingCampaignId] = useState<`0x${string}` | null>(null);
 
     // Local campaigns (in real app this would come from API)
-    const [campaigns, setCampaigns] = useState<LocalCampaign[]>(() => {
-        const stored = localStorage.getItem(`campaigns-${address}`);
-        return stored ? JSON.parse(stored) : [];
-    });
+    const [campaigns, setCampaigns] = useState<LocalCampaign[]>([]);
+    const [serverLoading, setServerLoading] = useState(false);
+
+    // Fetch campaigns from server
+    useEffect(() => {
+        if (!address) return;
+
+        const fetchCampaigns = async () => {
+            setServerLoading(true);
+            try {
+                const res = await fetch(`${API_URL}/api/campaigns?walletAddress=${address}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    const serverCampaigns = (data.campaigns || []).map((c: ServerCampaign) => ({
+                        id: c.id as `0x${string}`,
+                        name: c.name,
+                        adType: ["BANNER", "SQUARE", "SIDEBAR", "INTERSTITIAL"].indexOf(c.adType),
+                        budget: Number(c.budget),
+                        spent: Number(c.spent || 0),
+                        impressions: c._count?.impressions || 0,
+                        imageUrl: c.mediaUrl || "",
+                        targetUrl: c.targetUrl || "",
+                        status: c.status.toLowerCase() as "active" | "paused" | "created" | "pending",
+                        createdAt: Date.now(),
+                    }));
+                    setCampaigns(serverCampaigns);
+                }
+            } catch (err) {
+                console.error("Failed to fetch campaigns:", err);
+                // Fall back to localStorage
+                const stored = localStorage.getItem(`campaigns-${address}`);
+                if (stored) setCampaigns(JSON.parse(stored));
+            } finally {
+                setServerLoading(false);
+            }
+        };
+
+        fetchCampaigns();
+    }, [address]);
 
     // Contract hooks
     const { approve, isPending: _isApproving, isSuccess: approveSuccess, isConfirming: _approveConfirming } = useApproveUSDC();
@@ -72,7 +123,28 @@ export function AdvertiserPage() {
 
     // Handle create success
     useEffect(() => {
-        if (createSuccess && step === "creating" && pendingCampaignId) {
+        if (createSuccess && step === "creating" && pendingCampaignId && address) {
+            // Create campaign on server
+            const createOnServer = async () => {
+                try {
+                    await fetch(`${API_URL}/api/campaigns`, {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({
+                            walletAddress: address,
+                            name: campaignName,
+                            adType: ["BANNER", "SQUARE", "SIDEBAR", "INTERSTITIAL"][adType],
+                            mediaUrl: imageUrl || `https://picsum.photos/${adType === 0 ? "728/90" : adType === 1 ? "300/300" : adType === 2 ? "300/600" : "800/600"}`,
+                            targetUrl: targetUrl || "https://web3ads.wtf",
+                            budget: Number(budget),
+                        }),
+                    });
+                } catch (err) {
+                    console.error("Failed to create campaign on server:", err);
+                }
+            };
+            createOnServer();
+
             // Add to local campaigns
             setCampaigns((prev) => [
                 ...prev,
@@ -81,6 +153,8 @@ export function AdvertiserPage() {
                     name: campaignName,
                     adType,
                     budget: Number(budget),
+                    spent: 0,
+                    impressions: 0,
                     imageUrl,
                     targetUrl,
                     status: "created",
@@ -91,11 +165,23 @@ export function AdvertiserPage() {
             setStep("activating");
             activateCampaign(pendingCampaignId);
         }
-    }, [createSuccess, step, pendingCampaignId]);
+    }, [createSuccess, step, pendingCampaignId, address]);
 
     // Handle activate success
     useEffect(() => {
         if (activateSuccess && step === "activating" && pendingCampaignId) {
+            // Activate on server
+            const activateOnServer = async () => {
+                try {
+                    await fetch(`${API_URL}/api/campaigns/${pendingCampaignId}/activate`, {
+                        method: "POST",
+                    });
+                } catch (err) {
+                    console.error("Failed to activate campaign on server:", err);
+                }
+            };
+            activateOnServer();
+
             setCampaigns((prev) =>
                 prev.map((c) =>
                     c.id === pendingCampaignId ? { ...c, status: "active" as const } : c
@@ -149,6 +235,8 @@ export function AdvertiserPage() {
 
     // Calculate stats
     const totalBudget = campaigns.reduce((sum, c) => sum + c.budget, 0);
+    const totalSpent = campaigns.reduce((sum, c) => sum + (c.spent || 0), 0);
+    const totalImpressions = campaigns.reduce((sum, c) => sum + (c.impressions || 0), 0);
     const activeCampaigns = campaigns.filter((c) => c.status === "active").length;
 
     if (!isConnected) {
@@ -278,7 +366,11 @@ export function AdvertiserPage() {
                             <h2 className="border-b-2 border-zinc-700 pb-3 font-mono text-lg font-black uppercase">
                                 YOUR CAMPAIGNS
                             </h2>
-                            {campaigns.length === 0 ? (
+                            {serverLoading ? (
+                                <div className="flex min-h-[200px] flex-col items-center justify-center text-center">
+                                    <p className="font-mono text-sm font-bold uppercase text-zinc-500">LOADING...</p>
+                                </div>
+                            ) : campaigns.length === 0 ? (
                                 <div className="flex min-h-[200px] flex-col items-center justify-center text-center">
                                     <p className="font-mono text-sm font-bold uppercase text-zinc-500">NO CAMPAIGNS YET</p>
                                     <p className="mt-2 font-mono text-xs uppercase text-zinc-600">
@@ -306,7 +398,9 @@ export function AdvertiserPage() {
                                                         ? "text-green-500"
                                                         : campaign.status === "created"
                                                             ? "text-yellow-500"
-                                                            : "text-zinc-500"
+                                                            : campaign.status === "paused"
+                                                                ? "text-orange-500"
+                                                                : "text-zinc-500"
                                                         }`}
                                                 >
                                                     {campaign.status}
@@ -318,6 +412,18 @@ export function AdvertiserPage() {
                                                         ${campaign.budget}
                                                     </span>
                                                     <span className="ml-1 font-mono text-xs text-zinc-600">BUDGET</span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-mono text-lg font-black text-white">
+                                                        {(campaign.impressions || 0).toLocaleString()}
+                                                    </span>
+                                                    <span className="ml-1 font-mono text-xs text-zinc-600">IMPS</span>
+                                                </div>
+                                                <div>
+                                                    <span className="font-mono text-lg font-black text-zinc-400">
+                                                        ${(campaign.spent || 0).toFixed(2)}
+                                                    </span>
+                                                    <span className="ml-1 font-mono text-xs text-zinc-600">SPENT</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -333,9 +439,9 @@ export function AdvertiserPage() {
                             <div className="mt-4 grid grid-cols-2 gap-4">
                                 {[
                                     { value: activeCampaigns.toString(), label: "ACTIVE" },
-                                    { value: `$${totalBudget}`, label: "TOTAL BUDGET" },
-                                    { value: "0", label: "IMPRESSIONS" },
-                                    { value: `$${totalBudget}`, label: "REMAINING" },
+                                    { value: `$${totalBudget.toFixed(2)}`, label: "TOTAL BUDGET" },
+                                    { value: totalImpressions.toLocaleString(), label: "IMPRESSIONS" },
+                                    { value: `$${(totalBudget - totalSpent).toFixed(2)}`, label: "REMAINING" },
                                 ].map((stat) => (
                                     <div key={stat.label} className="border-2 border-zinc-800 bg-black p-4 text-center">
                                         <span className="block font-mono text-2xl font-black text-[#ff3e00]">{stat.value}</span>

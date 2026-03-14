@@ -75,7 +75,14 @@ export function Web3Ad({
 
     // Record impression when ad is viewed
     const handleImpression = useCallback(async () => {
-        if (!ad || impressionRecorded || testMode) return;
+        if (!ad || impressionRecorded) return;
+
+        // In test mode, just trigger callback without server call
+        if (testMode) {
+            setImpressionRecorded(true);
+            onImpression?.(ad.campaignId);
+            return;
+        }
 
         const viewDuration = viewStartTime.current ? Date.now() - viewStartTime.current : MIN_VIEW_TIME;
 
