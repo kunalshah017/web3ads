@@ -24,17 +24,17 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 | **Smart Contracts**        | ✅ Done | Web3AdsCore deployed to Base Sepolia                                  |
 | **Backend Signing**        | ✅ Done | EIP-712 signatures for impressions and withdrawals                    |
 | **Viewer Withdrawal**      | ✅ Done | Backend proof endpoints + client withdrawal UI                        |
+| **zkProof Verification**   | ✅ Done | Simplified nullifier-based (commitment + secret hash per ad)          |
+| **Impression Tracking**    | ✅ Done | Rate limiting, fraud prevention, viewability (IntersectionObserver)   |
+| **Publisher Dashboard**    | ✅ Done | Earnings from server, embed code, withdrawal UI                       |
+| **Advertiser Dashboard**   | ✅ Done | Campaign creation, server sync, analytics (impressions/spent)         |
 
 ### 🔄 In Progress / Remaining
 
-| Component                | Status     | Notes                                    |
-| ------------------------ | ---------- | ---------------------------------------- |
-| **zkProof Verification** | ⏳ Pending | On-chain Semaphore group verification    |
-| **Impression Tracking**  | ⏳ Pending | With fraud prevention + on-chain record  |
-| **Publisher Dashboard**  | ⏳ Pending | Earnings, embed code                     |
-| **Advertiser Dashboard** | ⏳ Pending | Campaign creation, analytics             |
-| **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster                       |
-| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments                   |
+| Component                | Status     | Notes                                       |
+| ------------------------ | ---------- | ------------------------------------------- |
+| **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster                          |
+| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments                      |
 
 ### 🏗️ Key Architecture Decisions Made
 
