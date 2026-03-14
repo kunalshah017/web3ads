@@ -1,7 +1,6 @@
 import pkg from "@prisma/client";
 const { PrismaClient } = pkg;
-import adapterPkg from "@prisma/adapter-pg";
-const { PrismaPg } = adapterPkg;
+import { PrismaPg } from "@prisma/adapter-pg";
 import pg from "pg";
 
 // Create a connection pool for Prisma 7
@@ -13,7 +12,7 @@ const pool = new pg.Pool({
 const adapter = new PrismaPg(pool as any);
 
 const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+  prisma: InstanceType<typeof PrismaClient> | undefined;
 };
 
 export const prisma =
