@@ -267,7 +267,7 @@ export function calculateImpressions(
   const budgetWei = parseEther(budgetETH || "0");
   const cpmRate = CPM_RATES_ETH[adType as keyof typeof CPM_RATES_ETH];
 
-  if (!cpmRate || cpmRate === 0n) return 0;
+  if (!cpmRate) return 0;
 
   // impressions = (budget / cpm) * 1000
   return Number((budgetWei * 1000n) / cpmRate);

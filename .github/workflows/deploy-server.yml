@@ -1,50 +1,50 @@
 name: Deploy Server to Azure App Service
 
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - 'server/**'
-      - '.github/workflows/deploy-server.yml'
+    push:
+        branches:
+            - main
+        paths:
+            - "server/**"
+            - ".github/workflows/deploy-server.yml"
 
 jobs:
-  build_and_deploy:
-    runs-on: ubuntu-latest
-    name: Build and Deploy Server
-    steps:
-      - uses: actions/checkout@v4
+    build_and_deploy:
+        runs-on: ubuntu-latest
+        name: Build and Deploy Server
+        steps:
+            - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
+            - name: Setup Node.js
+              uses: actions/setup-node@v4
+              with:
+                  node-version: "20"
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v2
-        with:
-          version: 9
+            - name: Setup pnpm
+              uses: pnpm/action-setup@v2
+              with:
+                  version: 9
 
-      - name: Install dependencies
-        working-directory: ./server
-        run: pnpm install --frozen-lockfile
+            - name: Install dependencies
+              working-directory: ./server
+              run: pnpm install --frozen-lockfile
 
-      - name: Build
-        working-directory: ./server
-        run: pnpm build
+            - name: Build
+              working-directory: ./server
+              run: pnpm build
 
-      - name: Create deployment package
-        working-directory: ./server
-        run: |
-          mkdir -p deploy
-          cp -r dist deploy/
-          cp package.json deploy/
-          cp pnpm-lock.yaml deploy/
-          cd deploy && zip -r ../deploy.zip .
+            - name: Create deployment package
+              working-directory: ./server
+              run: |
+                  mkdir -p deploy
+                  cp -r dist deploy/
+                  cp package.json deploy/
+                  cp pnpm-lock.yaml deploy/
+                  cd deploy && zip -r ../deploy.zip .
 
-      - name: Deploy to Azure Web App
-        uses: azure/webapps-deploy@v3
-        with:
-          app-name: 'web3ads-api'
-          publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-          package: ./server/deploy.zip
+            - name: Deploy to Azure Web App
+              uses: azure/webapps-deploy@v3
+              with:
+                  app-name: "web3ads-api"
+                  publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+                  package: ./server/deploy.zip
