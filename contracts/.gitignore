@@ -1,0 +1,18 @@
+# Foundry dependencies
+/cache/
+/out/
+/lib/
+
+# Environment
+.env
+
+# Node (if any tooling needs it)
+node_modules/
+
+# IDE
+.idea/
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db

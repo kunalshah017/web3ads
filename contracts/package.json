@@ -1,0 +1,27 @@
+{
+  "name": "@web3ads/contracts",
+  "version": "1.0.0",
+  "description": "Web3Ads Smart Contracts (Foundry)",
+  "scripts": {
+    "build": "forge build",
+    "test": "forge test",
+    "test:v": "forge test -vvv",
+    "test:gas": "forge test --gas-report",
+    "fmt": "forge fmt",
+    "snapshot": "forge snapshot",
+    "deploy:local": "forge script script/Deploy.s.sol:DeployLocal --fork-url http://localhost:8545 --broadcast",
+    "deploy:base-sepolia": "forge script script/Deploy.s.sol:DeployWeb3AdsCore --rpc-url $BASE_SEPOLIA_RPC_URL --broadcast --verify",
+    "deploy:base": "forge script script/Deploy.s.sol:DeployWeb3AdsCore --rpc-url https://mainnet.base.org --broadcast --verify",
+    "anvil": "anvil",
+    "clean": "forge clean"
+  },
+  "keywords": [
+    "web3",
+    "ads",
+    "ethereum",
+    "base",
+    "foundry"
+  ],
+  "author": "",
+  "license": "MIT"
+}
