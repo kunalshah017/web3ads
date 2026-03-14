@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { useAccount } from "wagmi";
 import { isAddress } from "viem";
+import { WalletButton } from "../components/WalletButton";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
 
@@ -122,17 +123,19 @@ export function GaslessPaymentPage() {
         <div className="min-h-screen bg-black py-12 px-4">
             <div className="max-w-2xl mx-auto space-y-8">
                 {/* Header */}
-                <div className="text-center space-y-4">
-                    <div className="inline-flex items-center gap-2 px-4 py-2 bg-green-500/10 border border-green-500/30 rounded-full">
-                        <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                        <span className="text-green-400 text-sm font-mono">
+                <div className="border-4 border-white bg-black p-8 text-center">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 border-2 border-green-500 mb-4">
+                        <span className="w-2 h-2 bg-green-500 animate-pulse"></span>
+                        <span className="text-green-400 text-xs font-mono uppercase tracking-wider">
                             GASLESS ENABLED
                         </span>
                     </div>
-                    <h1 className="text-4xl font-black text-white tracking-tight">
-                        GASLESS PAYMENTS
+                    <h1 className="font-mono text-4xl font-black uppercase tracking-tight text-white md:text-5xl">
+                        GASLESS
+                        <br />
+                        <span className="text-[#ff3e00]">PAYMENTS</span>
                     </h1>
-                    <p className="text-zinc-400 max-w-md mx-auto">
+                    <p className="text-zinc-400 max-w-md mx-auto mt-4 font-mono text-xs uppercase tracking-wider">
                         Send your ad earnings to anyone without paying gas fees. We sponsor
                         all transaction costs on Base.
                     </p>
@@ -140,10 +143,11 @@ export function GaslessPaymentPage() {
 
                 {!isConnected ? (
                     /* Connect Wallet Prompt */
-                    <div className="bg-zinc-900 border-4 border-zinc-800 p-8 text-center">
-                        <p className="text-zinc-400 font-mono">
+                    <div className="bg-zinc-900 border-4 border-zinc-800 p-8 text-center space-y-4">
+                        <p className="text-zinc-400 font-mono uppercase text-sm">
                             Connect your wallet to use gasless payments
                         </p>
+                        <WalletButton />
                     </div>
                 ) : (
                     <>
