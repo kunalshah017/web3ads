@@ -423,7 +423,7 @@ export function AdvertiserPage() {
                             </div>
                             <button
                                 type="submit"
-                                disabled={isLoading || !campaignName || !budget || Number(budget) < 10 || !uploadedImageUrl}
+                                disabled={isLoading || !campaignName || !budget || Number(budget) < 0.001 || !uploadedImageUrl}
                                 className="w-full border-4 border-[#ff3e00] bg-[#ff3e00] py-4 font-mono text-sm font-bold uppercase tracking-wider text-white transition-all hover:bg-black disabled:cursor-not-allowed disabled:border-zinc-700 disabled:bg-zinc-800 disabled:text-zinc-500"
                             >
                                 {buttonText}
