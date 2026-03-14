@@ -288,8 +288,8 @@ export function GaslessPaymentPage() {
                                 onClick={handleSend}
                                 disabled={isLoading || !recipient || !amount}
                                 className={`w-full py-4 font-mono font-bold text-lg uppercase tracking-wider transition-all ${isLoading || !recipient || !amount
-                                        ? "bg-zinc-800 text-zinc-600 cursor-not-allowed"
-                                        : "bg-[#ff3e00] text-white hover:bg-[#ff5500] active:scale-[0.98]"
+                                    ? "bg-zinc-800 text-zinc-600 cursor-not-allowed"
+                                    : "bg-[#ff3e00] text-white hover:bg-[#ff5500] active:scale-[0.98]"
                                     }`}
                             >
                                 {isLoading ? (

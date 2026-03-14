@@ -51,21 +51,19 @@ export default function Info() {
                 <div className="flex justify-center gap-2">
                     <button
                         onClick={() => setShowProduction(false)}
-                        className={`border-4 px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${
-                            !showProduction
+                        className={`border-4 px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${!showProduction
                                 ? "border-[#ff3e00] bg-[#ff3e00] text-black"
                                 : "border-zinc-700 bg-black text-zinc-400 hover:border-white hover:text-white"
-                        }`}
+                            }`}
                     >
                         DEMO VALUES
                     </button>
                     <button
                         onClick={() => setShowProduction(true)}
-                        className={`border-4 px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${
-                            showProduction
+                        className={`border-4 px-6 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${showProduction
                                 ? "border-[#ff3e00] bg-[#ff3e00] text-black"
                                 : "border-zinc-700 bg-black text-zinc-400 hover:border-white hover:text-white"
-                        }`}
+                            }`}
                     >
                         PRODUCTION
                     </button>
