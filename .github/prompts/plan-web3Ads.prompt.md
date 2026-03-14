@@ -13,26 +13,26 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ### ✅ Completed
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Server API** | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL |
+| Component               | Status  | Notes                                                                 |
+| ----------------------- | ------- | --------------------------------------------------------------------- |
+| **Server API**          | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL                              |
 | **Viewer Registration** | ✅ Done | `/api/viewers/register`, `/api/viewers/profile`, `/api/viewers/stats` |
-| **Client Web App** | ✅ Done | React + Vite + wagmi + RainbowKit |
-| **Viewer Page** | ✅ Done | Semaphore identity generation, wallet linking |
-| **Chrome Extension** | ✅ Done | Identity storage, popup UI, switch wallet |
-| **@web3ads/react SDK** | ✅ Done | Ad component, extension detection |
+| **Client Web App**      | ✅ Done | React + Vite + wagmi + RainbowKit                                     |
+| **Viewer Page**         | ✅ Done | Semaphore identity generation, wallet linking                         |
+| **Chrome Extension**    | ✅ Done | Identity storage, popup UI, switch wallet                             |
+| **@web3ads/react SDK**  | ✅ Done | Ad component, extension detection                                     |
 
 ### 🔄 In Progress / Remaining
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| **Smart Contracts** | ⏳ Pending | Web3AdsCore, RewardPool on Base Sepolia |
+| Component                | Status     | Notes                                    |
+| ------------------------ | ---------- | ---------------------------------------- |
+| **Smart Contracts**      | ⏳ Pending | Web3AdsCore, RewardPool on Base Sepolia  |
 | **zkProof Verification** | ⏳ Pending | Backend verification of Semaphore proofs |
-| **Impression Tracking** | ⏳ Pending | With fraud prevention |
-| **Publisher Dashboard** | ⏳ Pending | Earnings, embed code |
-| **Advertiser Dashboard** | ⏳ Pending | Campaign creation, analytics |
-| **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster |
-| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments |
+| **Impression Tracking**  | ⏳ Pending | With fraud prevention                    |
+| **Publisher Dashboard**  | ⏳ Pending | Earnings, embed code                     |
+| **Advertiser Dashboard** | ⏳ Pending | Campaign creation, analytics             |
+| **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster                       |
+| **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments                   |
 
 ### 🏗️ Key Architecture Decisions Made
 
@@ -229,6 +229,7 @@ import { Web3Ad } from "@web3ads/react";
 **Semaphore identity generation happens in the CLIENT APP, not the extension.**
 
 **Rationale:**
+
 - Service workers cannot use `URL.createObjectURL()` which `@semaphore-protocol/core` requires for WASM
 - Moving Semaphore to client app (which has full DOM access) avoids this limitation
 - Extension becomes a lightweight identity storage and proof relay
@@ -261,12 +262,12 @@ import { Web3Ad } from "@web3ads/react";
 - If user returns to old wallet on new browser, they get their old earnings (via server)
 - Semaphore commitment is tied to browser (localStorage), wallet is tied to earnings (server)
 
-| Scenario | Behavior |
-|----------|----------|
-| Same browser + same wallet | ✅ Idempotent - returns existing viewer |
-| Same browser + different wallet | ❌ Must use SWITCH to clear identity first |
-| Different browser + same wallet | ✅ Server updates commitment for new browser |
-| SWITCH wallet | Clears identity, creates fresh one for new wallet |
+| Scenario                        | Behavior                                          |
+| ------------------------------- | ------------------------------------------------- |
+| Same browser + same wallet      | ✅ Idempotent - returns existing viewer           |
+| Same browser + different wallet | ❌ Must use SWITCH to clear identity first        |
+| Different browser + same wallet | ✅ Server updates commitment for new browser      |
+| SWITCH wallet                   | Clears identity, creates fresh one for new wallet |
 
 ### Anti-Fraud Measures
 

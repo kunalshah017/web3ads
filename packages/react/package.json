@@ -1,5 +1,5 @@
 {
-  "name": "@web3ads/react",
+  "name": "web3ads-react",
   "version": "0.1.0",
   "description": "Web3Ads React component for publishers to monetize their sites",
   "main": "dist/index.js",
@@ -7,9 +7,9 @@
   "types": "dist/index.d.ts",
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
-      "require": "./dist/index.js",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.js"
     }
   },
   "files": [

@@ -12,7 +12,7 @@ export function PublisherPage() {
     const MIN_WITHDRAWAL = 10_000_000n; // 10 USDC
     const canWithdraw = balance && balance >= MIN_WITHDRAWAL;
 
-    const embedCode = `import { Web3Ad } from '@web3ads/react';
+    const embedCode = `import { Web3Ad } from 'web3ads-react';
 
 <Web3Ad
   publisherWallet="${address || "0x..."}"
@@ -84,7 +84,7 @@ export function PublisherPage() {
 
                         <div className="mt-6 space-y-2 border-t-2 border-zinc-700 pt-4">
                             <p className="font-mono text-xs uppercase text-zinc-400">
-                                <span className="text-[#ff3e00]">1.</span> Install: npm i @web3ads/react
+                                <span className="text-[#ff3e00]">1.</span> Install: npm i web3ads-react
                             </p>
                             <p className="font-mono text-xs uppercase text-zinc-400">
                                 <span className="text-[#ff3e00]">2.</span> Add the component to your site
