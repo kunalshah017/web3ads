@@ -288,3 +288,72 @@ export function useCampaign(
     isLoading,
   };
 }
+
+/**
+ * Hook to get viewer balance from contract
+ */
+export function useViewerBalance(commitment: string | undefined) {
+  const { chainId } = useAccount();
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
+
+  const commitmentBytes = commitment
+    ? (`0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`)
+    : undefined;
+
+  const { data: balance, refetch } = useReadContract({
+    address: contractAddress,
+    abi: WEB3ADS_CORE_ABI,
+    functionName: "viewerBalances",
+    args: commitmentBytes ? [commitmentBytes] : undefined,
+    query: { enabled: !!commitmentBytes && !!contractAddress },
+  });
+
+  return {
+    balance: balance as bigint | undefined,
+    refetch,
+    formattedBalance: balance ? (Number(balance) / 1e6).toFixed(2) : "0.00",
+  };
+}
+
+/**
+ * Hook for viewer withdrawal (requires backend signature)
+ */
+export function useViewerWithdraw() {
+  const { address, chainId } = useAccount();
+  const contractAddress = chainId
+    ? getContractAddress(chainId, "web3AdsCore")
+    : undefined;
+
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  const withdraw = useCallback(
+    async (commitment: string, proof: `0x${string}`) => {
+      if (!contractAddress || !address) return;
+
+      const commitmentBytes = `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
+
+      writeContract({
+        address: contractAddress,
+        abi: WEB3ADS_CORE_ABI,
+        functionName: "withdrawViewer",
+        args: [commitmentBytes, address, proof],
+      });
+    },
+    [writeContract, contractAddress, address],
+  );
+
+  return {
+    withdraw,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+    hash,
+  };
+}

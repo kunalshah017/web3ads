@@ -1,5 +1,10 @@
 import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
+import {
+  signViewerWithdrawal,
+  isBlockchainEnabled,
+  getViewerBalanceOnChain,
+} from "../blockchain/index.js";
 
 const router: IRouter = Router();
 
@@ -367,6 +372,109 @@ router.get("/stats", async (req, res) => {
   } catch (error) {
     console.error("Error fetching viewer stats:", error);
     return res.status(500).json({ error: "Failed to fetch viewer stats" });
+  }
+});
+
+// Request withdrawal proof for on-chain withdrawal
+router.post("/withdrawal-proof", async (req, res) => {
+  try {
+    const { commitment, recipient } = req.body;
+
+    if (!commitment || !recipient) {
+      return res.status(400).json({
+        error: "commitment and recipient are required",
+      });
+    }
+
+    if (!isBlockchainEnabled()) {
+      return res.status(503).json({
+        error: "Blockchain integration not configured",
+      });
+    }
+
+    // Verify the viewer exists and has this commitment
+    const viewer = await prisma.viewer.findUnique({
+      where: { semaphoreCommitment: commitment },
+      include: { user: true },
+    });
+
+    if (!viewer) {
+      return res.status(404).json({ error: "Viewer not found" });
+    }
+
+    // Verify the recipient matches the viewer's wallet (or is the actual wallet address)
+    const viewerWallet = viewer.user.walletAddress.toLowerCase();
+    const recipientLower = recipient.toLowerCase();
+
+    // Allow withdrawal only to the linked wallet
+    if (!viewerWallet.startsWith("anon_") && viewerWallet !== recipientLower) {
+      return res.status(403).json({
+        error: "Recipient must match the linked wallet address",
+      });
+    }
+
+    // Check on-chain balance
+    const commitmentBytes = `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
+    const onChainBalance = await getViewerBalanceOnChain(commitmentBytes);
+
+    if (!onChainBalance || onChainBalance === 0n) {
+      return res.status(400).json({
+        error: "No on-chain balance to withdraw",
+        onChainBalance: "0",
+      });
+    }
+
+    // Generate withdrawal signature
+    const signature = await signViewerWithdrawal({
+      commitment: commitmentBytes,
+      recipient: recipient as `0x${string}`,
+    });
+
+    if (!signature) {
+      return res.status(500).json({ error: "Failed to generate signature" });
+    }
+
+    return res.json({
+      signature,
+      commitment: commitmentBytes,
+      recipient,
+      balance: onChainBalance.toString(),
+      formattedBalance: (Number(onChainBalance) / 1e6).toFixed(2),
+    });
+  } catch (error) {
+    console.error("Error generating withdrawal proof:", error);
+    return res.status(500).json({ error: "Failed to generate withdrawal proof" });
+  }
+});
+
+// Get viewer on-chain balance
+router.get("/onchain-balance", async (req, res) => {
+  try {
+    const { commitment } = req.query;
+
+    if (!commitment || typeof commitment !== "string") {
+      return res.status(400).json({ error: "commitment is required" });
+    }
+
+    if (!isBlockchainEnabled()) {
+      return res.json({
+        enabled: false,
+        balance: "0",
+        formattedBalance: "0.00",
+      });
+    }
+
+    const commitmentBytes = `0x${commitment.replace("0x", "").padStart(64, "0")}` as `0x${string}`;
+    const balance = await getViewerBalanceOnChain(commitmentBytes);
+
+    return res.json({
+      enabled: true,
+      balance: balance?.toString() || "0",
+      formattedBalance: balance ? (Number(balance) / 1e6).toFixed(2) : "0.00",
+    });
+  } catch (error) {
+    console.error("Error fetching on-chain balance:", error);
+    return res.status(500).json({ error: "Failed to fetch on-chain balance" });
   }
 });
 

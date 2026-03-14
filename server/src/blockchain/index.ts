@@ -196,6 +196,34 @@ export async function getViewerBalanceOnChain(
 }
 
 /**
+ * Sign a viewer withdrawal request
+ * The signature proves the backend authorized this withdrawal
+ */
+export async function signViewerWithdrawal(params: {
+  commitment: `0x${string}`;
+  recipient: `0x${string}`;
+}): Promise<`0x${string}` | null> {
+  if (!signerAccount) {
+    console.warn("[Blockchain] Cannot sign - signer not configured");
+    return null;
+  }
+
+  const { commitment, recipient } = params;
+
+  // Create message hash (must match contract's verification)
+  const messageHash = keccak256(
+    encodePacked(["bytes32", "address"], [commitment, recipient]),
+  );
+
+  // Sign with Ethereum Signed Message prefix
+  const signature = await signerAccount.signMessage({
+    message: { raw: messageHash },
+  });
+
+  return signature;
+}
+
+/**
  * Check if blockchain integration is enabled
  */
 export function isBlockchainEnabled(): boolean {

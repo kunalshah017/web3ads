@@ -3,9 +3,11 @@ import { WalletButton } from "../components/WalletButton";
 import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Identity } from "@semaphore-protocol/core";
+import { useViewerBalance, useViewerWithdraw } from "../hooks/useContracts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
 const IDENTITY_STORAGE_KEY = "web3ads_semaphore_identity";
+const MIN_WITHDRAWAL = 10_000_000n; // 10 USDC
 
 interface ExtensionStatus {
     hasIdentity?: boolean;
@@ -43,9 +45,25 @@ export function ViewerPage() {
     const [isLinking, setIsLinking] = useState(false);
     const [linkingError, setLinkingError] = useState<string | null>(null);
     const [identity, setIdentity] = useState<Identity | null>(null);
+    const [isRequestingProof, setIsRequestingProof] = useState(false);
+    const [withdrawError, setWithdrawError] = useState<string | null>(null);
+
+    // Get commitment for balance check
+    const commitment = identity?.commitment.toString();
+    const { balance: onChainBalance, formattedBalance, refetch: refetchBalance } = useViewerBalance(commitment);
+    const { withdraw, isPending: isWithdrawing, isConfirming, isSuccess: withdrawSuccess } = useViewerWithdraw();
 
     // Check if in switch-wallet mode (coming from extension popup)
     const isSwitchWalletMode = searchParams.get("action") === "switch-wallet";
+
+    const canWithdraw = onChainBalance && onChainBalance >= MIN_WITHDRAWAL;
+
+    // Refetch balance on successful withdrawal
+    useEffect(() => {
+        if (withdrawSuccess) {
+            refetchBalance();
+        }
+    }, [withdrawSuccess, refetchBalance]);
 
     // Initialize Semaphore identity on mount (or create fresh one if switching)
     useEffect(() => {
@@ -164,6 +182,43 @@ export function ViewerPage() {
             window.removeEventListener("message", handleLinkResponse);
         }, 10000);
     }, [address, extensionInstalled, identity]);
+
+    // Handle withdrawal - get proof from backend, then call contract
+    const handleWithdraw = useCallback(async () => {
+        if (!address || !commitment) return;
+
+        setIsRequestingProof(true);
+        setWithdrawError(null);
+
+        try {
+            // Request withdrawal proof from backend
+            const response = await fetch(`${API_URL}/api/viewers/withdrawal-proof`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    commitment,
+                    recipient: address,
+                }),
+            });
+
+            if (!response.ok) {
+                const error = await response.json();
+                setWithdrawError(error.error || "Failed to get withdrawal proof");
+                setIsRequestingProof(false);
+                return;
+            }
+
+            const { signature } = await response.json();
+            setIsRequestingProof(false);
+
+            // Call contract with signature
+            withdraw(commitment, signature);
+        } catch (error) {
+            console.error("[Web3Ads] Withdrawal failed:", error);
+            setWithdrawError("Failed to process withdrawal");
+            setIsRequestingProof(false);
+        }
+    }, [address, commitment, withdraw]);
 
     const isWalletLinked = extensionStatus?.walletAddress?.toLowerCase() === address?.toLowerCase();
 
@@ -317,6 +372,52 @@ export function ViewerPage() {
                                 </div>
                             )}
                         </div>
+
+                        {/* Withdrawal Section - Show when wallet is linked */}
+                        {isWalletLinked && isConnected && (
+                            <div className="mt-6 border-t-2 border-zinc-700 pt-6">
+                                <h3 className="font-mono text-xs font-bold uppercase text-zinc-500">ON-CHAIN BALANCE</h3>
+                                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                                    <div className="border-2 border-zinc-700 bg-black p-4">
+                                        <span className="font-mono text-xs uppercase text-zinc-500">AVAILABLE TO WITHDRAW</span>
+                                        <span className="mt-2 block font-mono text-3xl font-black text-accent">
+                                            ${formattedBalance}
+                                        </span>
+                                        <span className="font-mono text-xs text-zinc-600">USDC on Base Sepolia</span>
+                                    </div>
+                                    <div className="flex flex-col justify-center border-2 border-zinc-700 bg-black p-4">
+                                        <button
+                                            onClick={handleWithdraw}
+                                            disabled={!canWithdraw || isWithdrawing || isConfirming || isRequestingProof}
+                                            className={`w-full border-4 py-3 font-mono text-xs font-bold uppercase tracking-wider transition-all ${
+                                                canWithdraw
+                                                    ? "border-accent bg-accent text-black hover:bg-white"
+                                                    : "border-zinc-700 bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                                            }`}
+                                        >
+                                            {isRequestingProof
+                                                ? "REQUESTING PROOF..."
+                                                : isWithdrawing || isConfirming
+                                                    ? "WITHDRAWING..."
+                                                    : `WITHDRAW${!canWithdraw ? " (MIN $10)" : ""}`}
+                                        </button>
+                                        {withdrawSuccess && (
+                                            <p className="mt-2 text-center font-mono text-xs uppercase text-green-500">
+                                                ✓ WITHDRAWAL SUCCESSFUL
+                                            </p>
+                                        )}
+                                        {withdrawError && (
+                                            <p className="mt-2 text-center font-mono text-xs uppercase text-red-500">
+                                                {withdrawError}
+                                            </p>
+                                        )}
+                                        <p className="mt-2 text-center font-mono text-xs uppercase text-zinc-600">
+                                            MIN: $10 USDC
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
                     </div>
                 ) : (
                     /* Extension Not Installed */
