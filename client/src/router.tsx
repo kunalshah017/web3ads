@@ -5,6 +5,7 @@ import { AdvertiserPage } from "./pages/Advertiser";
 import { PublisherPage } from "./pages/Publisher";
 import { ViewerPage } from "./pages/Viewer";
 import { DashboardPage } from "./pages/Dashboard";
+import { TestPage } from "./pages/Test";
 
 export const router = createBrowserRouter([
     {
@@ -30,6 +31,10 @@ export const router = createBrowserRouter([
             {
                 path: "dashboard",
                 element: <DashboardPage />,
+            },
+            {
+                path: "test",
+                element: <TestPage />,
             },
         ],
     },

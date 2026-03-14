@@ -24,7 +24,7 @@ interface LocalCampaign {
 
 export function AdvertiserPage() {
     const { isConnected, address } = useAccount();
-    const { balance, allowance, formattedBalance, refetchAllowance } = useUSDCBalance();
+    const { allowance, formattedBalance, refetchAllowance } = useUSDCBalance();
 
     // Form state
     const [campaignName, setCampaignName] = useState("");
@@ -44,9 +44,9 @@ export function AdvertiserPage() {
     });
 
     // Contract hooks
-    const { approve, isPending: isApproving, isSuccess: approveSuccess, isConfirming: approveConfirming } = useApproveUSDC();
-    const { createCampaign, isPending: isCreating, isSuccess: createSuccess, isConfirming: createConfirming, reset: resetCreate } = useCreateCampaign();
-    const { activateCampaign, isPending: isActivating, isSuccess: activateSuccess, isConfirming: activateConfirming } = useActivateCampaign();
+    const { approve, isPending: _isApproving, isSuccess: approveSuccess, isConfirming: _approveConfirming } = useApproveUSDC();
+    const { createCampaign, isPending: _isCreating, isSuccess: createSuccess, isConfirming: _createConfirming, reset: resetCreate } = useCreateCampaign();
+    const { activateCampaign, isPending: _isActivating, isSuccess: activateSuccess, isConfirming: _activateConfirming } = useActivateCampaign();
 
     // Save campaigns to localStorage
     useEffect(() => {

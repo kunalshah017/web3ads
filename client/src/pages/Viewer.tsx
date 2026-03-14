@@ -1,9 +1,15 @@
 import { useAccount } from "wagmi";
 import { WalletButton } from "../components/WalletButton";
 import { useState, useEffect, useCallback } from "react";
+import { useSearchParams } from "react-router-dom";
+import { Identity } from "@semaphore-protocol/core";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const IDENTITY_STORAGE_KEY = "web3ads_semaphore_identity";
 
 interface ExtensionStatus {
-    commitment?: string;
+    hasIdentity?: boolean;
+    commitment?: string | null;
     isRegistered?: boolean;
     walletAddress?: string | null;
     totalEarnings?: number;
@@ -11,25 +17,75 @@ interface ExtensionStatus {
     error?: string;
 }
 
+/**
+ * Get or create Semaphore identity (stored in localStorage)
+ */
+function getOrCreateIdentity(): Identity {
+    const stored = localStorage.getItem(IDENTITY_STORAGE_KEY);
+    if (stored) {
+        try {
+            return new Identity(stored);
+        } catch {
+            // Invalid stored identity, create new
+        }
+    }
+
+    const identity = new Identity();
+    localStorage.setItem(IDENTITY_STORAGE_KEY, identity.export());
+    return identity;
+}
+
 export function ViewerPage() {
     const { address, isConnected } = useAccount();
+    const [searchParams, setSearchParams] = useSearchParams();
     const [extensionInstalled, setExtensionInstalled] = useState(false);
     const [extensionStatus, setExtensionStatus] = useState<ExtensionStatus | null>(null);
     const [isLinking, setIsLinking] = useState(false);
     const [linkingError, setLinkingError] = useState<string | null>(null);
+    const [identity, setIdentity] = useState<Identity | null>(null);
+
+    // Check if in switch-wallet mode (coming from extension popup)
+    const isSwitchWalletMode = searchParams.get("action") === "switch-wallet";
+
+    // Initialize Semaphore identity on mount (or create fresh one if switching)
+    useEffect(() => {
+        if (isSwitchWalletMode) {
+            // Clear old identity when switching wallets
+            localStorage.removeItem(IDENTITY_STORAGE_KEY);
+        }
+        const id = getOrCreateIdentity();
+        setIdentity(id);
+        console.log("[Web3Ads] Semaphore commitment:", id.commitment.toString());
+    }, [isSwitchWalletMode]);
 
     // Check if extension is installed
     useEffect(() => {
         const checkExtension = () => {
-            // Extension injects __WEB3ADS_EXTENSION__ flag
-            setExtensionInstalled(!!(window as typeof window & { __WEB3ADS_EXTENSION__?: boolean }).__WEB3ADS_EXTENSION__);
+            // Extension sets data attribute on document element (CSP-safe)
+            const hasAttribute = document.documentElement.hasAttribute("data-web3ads-extension");
+            setExtensionInstalled(hasAttribute);
         };
 
-        // Check immediately and after a short delay (extension might inject later)
+        // Listen for extension ready message
+        const handleMessage = (event: MessageEvent) => {
+            if (event.data?.type === "WEB3ADS_EXTENSION_READY") {
+                setExtensionInstalled(true);
+            }
+        };
+
+        window.addEventListener("message", handleMessage);
+
+        // Check immediately and after a delay
         checkExtension();
         const timeout = setTimeout(checkExtension, 500);
 
-        return () => clearTimeout(timeout);
+        // Also request extension confirmation
+        window.postMessage({ type: "WEB3ADS_CHECK_EXTENSION" }, "*");
+
+        return () => {
+            clearTimeout(timeout);
+            window.removeEventListener("message", handleMessage);
+        };
     }, []);
 
     // Get extension status
@@ -48,42 +104,66 @@ export function ViewerPage() {
         return () => window.removeEventListener("message", handleStatusResponse);
     }, [extensionInstalled]);
 
-    // Link wallet to extension
+    // Link wallet to extension (sends Semaphore identity + wallet address)
     const linkWallet = useCallback(async () => {
-        if (!address || !extensionInstalled) return;
+        if (!address || !extensionInstalled || !identity) return;
 
         setIsLinking(true);
         setLinkingError(null);
 
+        const commitment = identity.commitment.toString();
+        const secret = identity.export();
+
         const handleLinkResponse = (event: MessageEvent) => {
             if (event.data?.type === "WEB3ADS_WALLET_LINKED") {
-                setIsLinking(false);
                 if (event.data.success) {
                     setExtensionStatus((prev) => ({
                         ...prev,
+                        hasIdentity: true,
                         walletAddress: address,
                         isRegistered: true,
-                        commitment: event.data.commitment,
+                        commitment: commitment,
                     }));
+                    setIsLinking(false);
                 } else {
-                    setLinkingError("Failed to link wallet. Please try again.");
+                    setLinkingError(event.data.error || "Failed to link wallet. Please try again.");
+                    setIsLinking(false);
                 }
                 window.removeEventListener("message", handleLinkResponse);
             }
         };
 
         window.addEventListener("message", handleLinkResponse);
+
+        // Send identity + wallet to extension via content script
         window.postMessage({
             type: "WEB3ADS_LINK_WALLET",
             walletAddress: address.toLowerCase(),
+            commitment: commitment,
+            secret: secret,
         }, "*");
+
+        // Also register with server
+        try {
+            await fetch(`${API_URL}/api/viewers/register`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                    semaphoreCommitment: commitment,
+                    walletAddress: address.toLowerCase(),
+                }),
+            });
+        } catch (error) {
+            console.error("[Web3Ads] Server registration failed:", error);
+            // Don't fail the whole flow - extension registration is more important
+        }
 
         // Timeout after 10 seconds
         setTimeout(() => {
             setIsLinking(false);
             window.removeEventListener("message", handleLinkResponse);
         }, 10000);
-    }, [address, extensionInstalled]);
+    }, [address, extensionInstalled, identity]);
 
     const isWalletLinked = extensionStatus?.walletAddress?.toLowerCase() === address?.toLowerCase();
 
@@ -99,6 +179,18 @@ export function ViewerPage() {
                         INSTALL OUR EXTENSION. GET 20% OF AD REVENUE.
                     </p>
                 </div>
+
+                {/* Identity Status */}
+                {identity && (
+                    <div className="mt-4 border-2 border-zinc-700 bg-zinc-900 p-4">
+                        <div className="flex items-center justify-between">
+                            <span className="font-mono text-xs uppercase text-zinc-500">SEMAPHORE ID</span>
+                            <span className="font-mono text-xs text-zinc-300">
+                                {identity.commitment.toString().slice(0, 16)}...{identity.commitment.toString().slice(-8)}
+                            </span>
+                        </div>
+                    </div>
+                )}
 
                 {/* Status Section - Show based on extension/wallet state */}
                 {extensionInstalled ? (
@@ -135,7 +227,61 @@ export function ViewerPage() {
 
                         {/* Wallet Linking Section */}
                         <div className="mt-6 border-t-2 border-zinc-700 pt-6">
-                            {!isConnected ? (
+                            {/* Switch Wallet Mode - user came from extension popup */}
+                            {isSwitchWalletMode ? (
+                                <div className="text-center">
+                                    <div className="mb-4 border-2 border-yellow-500 bg-yellow-500/10 p-4">
+                                        <span className="font-mono text-sm font-bold uppercase text-yellow-500">
+                                            🔄 SWITCH WALLET MODE
+                                        </span>
+                                        <p className="mt-2 font-mono text-xs uppercase text-zinc-400">
+                                            CONNECT A NEW WALLET TO START EARNING WITH IT
+                                        </p>
+                                    </div>
+
+                                    {!isConnected ? (
+                                        <div>
+                                            <p className="font-mono text-sm uppercase text-zinc-400">
+                                                CONNECT THE WALLET YOU WANT TO USE
+                                            </p>
+                                            <div className="mt-4">
+                                                <WalletButton />
+                                            </div>
+                                        </div>
+                                    ) : isWalletLinked ? (
+                                        <div>
+                                            <span className="inline-block border-2 border-green-500 bg-green-500/10 px-4 py-2 font-mono text-sm font-bold uppercase text-green-500">
+                                                ✓ WALLET LINKED SUCCESSFULLY
+                                            </span>
+                                            <p className="mt-4 font-mono text-xs uppercase text-zinc-500">
+                                                YOUR AD VIEW EARNINGS WILL BE CREDITED TO THIS WALLET
+                                            </p>
+                                            <button
+                                                onClick={() => setSearchParams({})}
+                                                className="mt-4 border-2 border-zinc-600 bg-zinc-800 px-6 py-2 font-mono text-xs font-bold uppercase tracking-wider text-zinc-300 transition-all hover:bg-zinc-700"
+                                            >
+                                                DONE
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div>
+                                            <p className="font-mono text-sm uppercase text-zinc-400">
+                                                LINK THIS WALLET: {address?.slice(0, 6)}...{address?.slice(-4)}
+                                            </p>
+                                            <button
+                                                onClick={linkWallet}
+                                                disabled={isLinking}
+                                                className="mt-4 border-4 border-yellow-500 bg-yellow-500 px-8 py-4 font-mono text-sm font-bold uppercase tracking-wider text-black transition-all hover:bg-white disabled:cursor-not-allowed disabled:opacity-50"
+                                            >
+                                                {isLinking ? "LINKING WALLET..." : "LINK WALLET"}
+                                            </button>
+                                            {linkingError && (
+                                                <p className="mt-4 font-mono text-xs uppercase text-red-500">{linkingError}</p>
+                                            )}
+                                        </div>
+                                    )}
+                                </div>
+                            ) : !isConnected ? (
                                 <div className="text-center">
                                     <p className="font-mono text-sm uppercase text-zinc-400">
                                         CONNECT YOUR WALLET TO LINK IT WITH THE EXTENSION
