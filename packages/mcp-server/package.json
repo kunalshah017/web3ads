@@ -1,0 +1,39 @@
+{
+  "name": "web3ads-mcp-server",
+  "version": "1.0.0",
+  "description": "Web3Ads MCP server for x402 agent payments using ad earnings",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "web3ads-mcp": "./dist/index.js"
+  },
+  "scripts": {
+    "dev": "tsx src/index.ts",
+    "build": "tsup src/index.ts --format esm --dts",
+    "start": "node dist/index.js",
+    "typecheck": "tsc --noEmit"
+  },
+  "keywords": [
+    "web3ads",
+    "mcp",
+    "x402",
+    "ai-agent",
+    "payments"
+  ],
+  "author": "web3ads",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.12.1",
+    "axios": "^1.9.0",
+    "dotenv": "^17.3.1",
+    "viem": "^2.47.2",
+    "x402-axios": "^1.1.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^25.5.0",
+    "tsup": "^8.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
+  }
+}

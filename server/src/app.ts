@@ -8,6 +8,7 @@ import adsRouter from "./routes/ads.js";
 import publishersRouter from "./routes/publishers.js";
 import viewersRouter from "./routes/viewers.js";
 import rewardsRouter from "./routes/rewards.js";
+import x402Router from "./routes/x402.js";
 
 dotenv.config();
 
@@ -34,6 +35,7 @@ app.get("/api", (_req, res) => {
       publishers: "/api/publishers",
       viewers: "/api/viewers",
       rewards: "/api/rewards",
+      x402: "/api/x402",
     },
   });
 });
@@ -44,6 +46,7 @@ app.use("/api/ads", adsRouter);
 app.use("/api/publishers", publishersRouter);
 app.use("/api/viewers", viewersRouter);
 app.use("/api/rewards", rewardsRouter);
+app.use("/api/x402", x402Router);
 
 // Error handler
 app.use(
