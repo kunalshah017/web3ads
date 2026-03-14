@@ -1,10 +1,15 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
+import { RouterProvider } from 'react-router-dom'
+import { Web3Provider } from './providers/Web3Provider'
+import { router } from './router'
+import '@rainbow-me/rainbowkit/styles.css'
 import './index.css'
-import App from './App.tsx'
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <App />
+    <Web3Provider>
+      <RouterProvider router={router} />
+    </Web3Provider>
   </StrictMode>,
 )
