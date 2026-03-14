@@ -33,9 +33,11 @@ router.get("/serve", async (req, res) => {
 
     // Accept both 'publisher' (from SDK) and 'publisherWallet' for compatibility
     const wallet = publisherWallet || publisher;
-    
+
     if (!wallet || typeof wallet !== "string") {
-      return res.status(400).json({ error: "publisher or publisherWallet is required" });
+      return res
+        .status(400)
+        .json({ error: "publisher or publisherWallet is required" });
     }
 
     // Test mode: return mock ads for development/testing
@@ -48,7 +50,7 @@ router.get("/serve", async (req, res) => {
         [AdType.INTERSTITIAL]: { width: 800, height: 600 },
       };
       const dimensions = mockAds[adType] || mockAds[AdType.BANNER];
-      
+
       return res.json({
         ad: {
           campaignId: "test-campaign-" + crypto.randomBytes(4).toString("hex"),
