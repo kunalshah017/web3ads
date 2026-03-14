@@ -273,6 +273,8 @@ returns: { txHash: string, newBalance: number }
 
 ## Implementation Steps (Priority Ordered)
 
+> **📌 COMMIT DISCIPLINE**: Make atomic commits after each numbered step or logical group. Don't bundle unrelated changes. Use conventional commit prefixes: `feat`, `fix`, `refactor`, `docs`, `style`, `test`, `chore`
+
 ---
 
 ### PHASE A: Core Monetization Flow (MVP)
@@ -284,44 +286,71 @@ returns: { txHash: string, newBalance: number }
 1. **Setup contracts project** — Foundry with Base Sepolia deployment
    - `Web3AdsCore.sol` — Registry, campaign management, reward pools
    - `SemaphoreVerifier.sol` — Integration with Semaphore for zkProof verification
+   > 📌 `git commit -m "feat(contracts): add Web3AdsCore smart contracts with Foundry"`
+
 2. **Database schema** — PostgreSQL with Prisma (Supabase)
    - Tables: advertisers, campaigns, publishers, impressions, rewards
+   > 📌 `git commit -m "feat(server): add Prisma schema for web3ads database"`
+
 3. **Wallet integration in client** — wagmi + viem + RainbowKit
+   > 📌 `git commit -m "feat(client): add wallet connection with wagmi and RainbowKit"`
 
 #### A2: Advertiser Flow
 
 4. **Advertiser registration** — Connect wallet, create advertiser profile
 5. **Campaign creation** — Select ad type, upload media (Supabase Storage), set budget
 6. **USDC deposit** — Approve + deposit to smart contract
+   > 📌 `git commit -m "feat(client): add advertiser dashboard and campaign creation"`
+
 7. **Campaign dashboard** — View spend, impressions, remaining budget
+   > 📌 `git commit -m "feat(client): add campaign analytics dashboard"`
 
 #### A3: Publisher Flow
 
 8. **Publisher registration** — Connect wallet, create publisher profile
+   > 📌 `git commit -m "feat(client): add publisher registration flow"`
+
 9. **Create `@web3ads/react` package** — Ad component for embedding
+   > 📌 `git commit -m "feat(packages): create @web3ads/react publisher SDK"`
+
 10. **Ad serving API** — `/api/ads/serve` returns ad based on type/category
+    > 📌 `git commit -m "feat(server): add ad serving API endpoint"`
+
 11. **Impression tracking** —
     - IntersectionObserver for viewability (50% visible, 1s minimum)
     - Browser fingerprinting for basic fraud prevention (without extension)
     - Rate limiting per publisher
+    > 📌 `git commit -m "feat(server): add impression tracking with fraud prevention"`
+
 12. **Publisher dashboard** — View earnings, get embed code, withdrawal
+    > 📌 `git commit -m "feat(client): add publisher earnings dashboard"`
 
 #### A4: Viewer Flow (Extension)
 
 13. **Semaphore identity setup** — Generate identity in extension, join group on-chain
+    > 📌 `git commit -m "feat(extension): add Semaphore identity generation"`
+
 14. **Extension content script** — Detect web3ads components on page
 15. **zkProof generation** — When ad viewed, generate Semaphore proof
 16. **Proof relay** — Extension sends proof to component via postMessage
+    > 📌 `git commit -m "feat(extension): add zkProof generation and relay"`
+
 17. **Backend verification** — Verify zkProof, credit viewer earnings
+    > 📌 `git commit -m "feat(server): add zkProof verification for viewer earnings"`
+
 18. **Viewer dashboard in extension** — Show accumulated earnings
+    > 📌 `git commit -m "feat(extension): add viewer earnings popup UI"`
 
 #### A5: Reward Distribution
 
 19. **Revenue split logic** —
     - With extension proof: Publisher 50%, Viewer 20%, Platform 30%
     - Without extension: Publisher 50%, Platform 50%
+    > 📌 `git commit -m "feat(server): implement revenue split logic"`
+
 20. **Claim function** — Publishers/Viewers can claim accumulated USDC
 21. **Minimum threshold** — $10 minimum for withdrawal
+    > 📌 `git commit -m "feat(contracts): add reward claim functions with threshold"`
 
 ---
 
@@ -333,14 +362,20 @@ returns: { txHash: string, newBalance: number }
 
 22. **Paymaster contract** — Sponsor gas using user's ad balance
 23. **ERC-4337 integration** — UserOperation support
+    > 📌 `git commit -m "feat(contracts): add paymaster for gasless transactions"`
+
 24. **Frontend integration** — "Pay with ad balance" option
+    > 📌 `git commit -m "feat(client): add gasless transaction UI"`
 
 #### B2: x402 MCP Integration
 
 25. **Create MCP server** — `packages/mcp-server/`
 26. **Balance check tool** — `web3ads_check_balance`
 27. **Payment tool** — `web3ads_pay_x402`
+    > 📌 `git commit -m "feat(packages): create MCP server for x402 integration"`
+
 28. **HeyElsa integration** — Connect for agent payments
+    > 📌 `git commit -m "feat(packages): add HeyElsa x402 payment flow"`
 
 ---
 
