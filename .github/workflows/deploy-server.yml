@@ -46,9 +46,17 @@ jobs:
                   cd deploy && zip -r ../deploy.zip .
 
             - name: Deploy to Azure Web App
-              uses: azure/webapps-deploy@v3
-              with:
-                  app-name: "web3ads-api"
-                  publish-profile: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
-                  package: ./server/deploy.zip
-                  type: zip
+              env:
+                  PUBLISH_PROFILE: ${{ secrets.AZURE_WEBAPP_PUBLISH_PROFILE }}
+              run: |
+                  # Extract credentials from publish profile
+                  USERNAME=$(echo "$PUBLISH_PROFILE" | grep -oP 'userName="\K[^"]+' | head -1)
+                  PASSWORD=$(echo "$PUBLISH_PROFILE" | grep -oP 'userPWD="\K[^"]+' | head -1)
+
+                  # Deploy using Kudu ZIP API
+                  curl -X POST \
+                    -u "$USERNAME:$PASSWORD" \
+                    --data-binary @./server/deploy.zip \
+                    "https://web3ads-api.scm.azurewebsites.net/api/zipdeploy?isAsync=false" \
+                    -H "Content-Type: application/zip" \
+                    --fail
