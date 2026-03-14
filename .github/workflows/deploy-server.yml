@@ -16,34 +16,13 @@ jobs:
         steps:
             - uses: actions/checkout@v4
 
-            - name: Setup Node.js
-              uses: actions/setup-node@v4
-              with:
-                  node-version: "22"
-
-            - name: Setup pnpm
-              uses: pnpm/action-setup@v2
-              with:
-                  version: 9
-
-            - name: Install dependencies
-              working-directory: ./server
-              run: pnpm install --frozen-lockfile
-
-            - name: Generate Prisma Client
-              working-directory: ./server
-              run: pnpm prisma generate
-
-            - name: Build
-              working-directory: ./server
-              run: pnpm build
-
             - name: Create deployment package
               working-directory: ./server
               run: |
                   mkdir -p deploy
-                  cp -r dist deploy/
+                  cp -r src deploy/
                   cp package.json deploy/
+                  cp tsconfig.json deploy/
                   cp -r prisma deploy/
                   cd deploy && zip -r ../deploy.zip .
 
