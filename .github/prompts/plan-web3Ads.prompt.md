@@ -33,12 +33,12 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 | **Gasless Transactions**   | ✅ Done | Backend pays gas for viewer withdrawals (simplified for hackathon)    |
 | **Gasless Payment Page**   | ✅ Done | `/gasless` - Send ETH to any address using ad earnings, $0 gas        |
 | **Publisher Gasless**      | ✅ Done | `withdrawPublisherTo()` contract function for publisher gasless       |
+| **V2 Contract Deployment** | ✅ Done | Web3AdsCoreV2 + Forwarder deployed & verified on Base Sepolia         |
 
 ### 🔄 In Progress / Remaining
 
 | Component                | Status     | Notes                                            |
 | ------------------------ | ---------- | ------------------------------------------------ |
-| **Deploy V2 Contracts**  | ⏳ Pending | Web3AdsCoreV2 + Forwarder to Base Sepolia        |
 | **Update Client for V2** | ⏳ Pending | Remove USDC, use ETH-based hooks                 |
 | **x402 MCP Integration** | ⏳ Pending | HeyElsa agent payments via MCP server            |
 
@@ -57,8 +57,8 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 | Contract         | Address                                      | Notes           |
 | ---------------- | -------------------------------------------- | --------------- |
 | Web3AdsCore V1   | `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872` | USDC-based (old)|
-| Web3AdsCoreV2    | `TBD - deploy pending`                       | ETH-based (new) |
-| Forwarder        | `TBD - deploy pending`                       | EIP-2771        |
+| Web3AdsCoreV2    | `0xff7DB767900a8151a1D55b3cC4C72Eb0DA482d1F` | ETH-based (new) |
+| Forwarder        | `0x8Bc2D17889EF9d04AA620e7984D7E7f74305215E` | EIP-2771        |
 | Backend Signer   | `0x3B2F1274dA63a64bBd22ba801ce449A313192ee6` |                 |
 
 ---
