@@ -13,22 +13,24 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ### ✅ Completed
 
-| Component               | Status  | Notes                                                                 |
-| ----------------------- | ------- | --------------------------------------------------------------------- |
-| **Server API**          | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL                              |
-| **Viewer Registration** | ✅ Done | `/api/viewers/register`, `/api/viewers/profile`, `/api/viewers/stats` |
-| **Client Web App**      | ✅ Done | React + Vite + wagmi + RainbowKit                                     |
-| **Viewer Page**         | ✅ Done | Semaphore identity generation, wallet linking                         |
-| **Chrome Extension**    | ✅ Done | Identity storage, popup UI, switch wallet                             |
-| **@web3ads/react SDK**  | ✅ Done | Ad component, extension detection                                     |
+| Component                  | Status  | Notes                                                                 |
+| -------------------------- | ------- | --------------------------------------------------------------------- |
+| **Server API**             | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL                              |
+| **Viewer Registration**    | ✅ Done | `/api/viewers/register`, `/api/viewers/profile`, `/api/viewers/stats` |
+| **Client Web App**         | ✅ Done | React + Vite + wagmi + RainbowKit                                     |
+| **Viewer Page**            | ✅ Done | Semaphore identity generation, wallet linking                         |
+| **Chrome Extension**       | ✅ Done | Identity storage, popup UI, switch wallet                             |
+| **web3ads-react SDK**      | ✅ Done | Published to npm v0.1.0, Ad component, extension detection            |
+| **Smart Contracts**        | ✅ Done | Web3AdsCore deployed to Base Sepolia                                  |
+| **Backend Signing**        | ✅ Done | EIP-712 signatures for impressions and withdrawals                    |
+| **Viewer Withdrawal**      | ✅ Done | Backend proof endpoints + client withdrawal UI                        |
 
 ### 🔄 In Progress / Remaining
 
 | Component                | Status     | Notes                                    |
 | ------------------------ | ---------- | ---------------------------------------- |
-| **Smart Contracts**      | ⏳ Pending | Web3AdsCore, RewardPool on Base Sepolia  |
-| **zkProof Verification** | ⏳ Pending | Backend verification of Semaphore proofs |
-| **Impression Tracking**  | ⏳ Pending | With fraud prevention                    |
+| **zkProof Verification** | ⏳ Pending | On-chain Semaphore group verification    |
+| **Impression Tracking**  | ⏳ Pending | With fraud prevention + on-chain record  |
 | **Publisher Dashboard**  | ⏳ Pending | Earnings, embed code                     |
 | **Advertiser Dashboard** | ⏳ Pending | Campaign creation, analytics             |
 | **Gasless Transactions** | ⏳ Pending | ERC-4337 paymaster                       |
@@ -40,6 +42,15 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 2. **CSP-Safe Extension Detection**: Uses `data-web3ads-extension` attribute instead of inline script injection
 3. **Wallet = Earnings Bucket**: Each wallet has separate earnings, no transfer between wallets
 4. **Switch Wallet Flow**: Clears identity entirely, creates fresh one for new wallet
+5. **Unscoped npm Package**: Published as `web3ads-react` (not `@web3ads/react`) to avoid npm organization requirements
+
+### 📋 Deployed Addresses (Base Sepolia)
+
+| Contract       | Address                                      |
+| -------------- | -------------------------------------------- |
+| Web3AdsCore    | `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872` |
+| USDC (Mock)    | `0x036CbD53842c5426634e7929541eC2318f3dCF7e` |
+| Backend Signer | `0x3B2F1274dA63a64bBd22ba801ce449A313192ee6` |
 
 ---
 
@@ -198,12 +209,12 @@ function claimRewards(address recipient, semaphoreProof)
 
 ## Phase 2: Publisher NPM Package
 
-### Package: `@web3ads/react`
+### Package: `web3ads-react` (npm)
 
 **Component API:**
 
 ```tsx
-import { Web3Ad } from "@web3ads/react";
+import { Web3Ad } from "web3ads-react";
 
 <Web3Ad
   publisherWallet="0x..."
@@ -340,19 +351,20 @@ returns: { txHash: string, newBalance: number }
 
 **Goal:** Advertisers can create campaigns → Publishers can show ads and earn → Viewers with extension can earn
 
-#### A1: Smart Contracts & Infrastructure
+#### A1: Smart Contracts & Infrastructure ✅ COMPLETED
 
-1. **Setup contracts project** — Foundry with Base Sepolia deployment
+1. ✅ **Setup contracts project** — Foundry with Base Sepolia deployment
    - `Web3AdsCore.sol` — Registry, campaign management, reward pools
-   - `SemaphoreVerifier.sol` — Integration with Semaphore for zkProof verification
-     > 📌 `git commit -m "feat(contracts): add Web3AdsCore smart contracts with Foundry"`
+   - Deployed to: `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872`
 
-2. **Database schema** — PostgreSQL with Prisma (Supabase)
-   - Tables: advertisers, campaigns, publishers, impressions, rewards
-     > 📌 `git commit -m "feat(server): add Prisma schema for web3ads database"`
+2. ✅ **Database schema** — PostgreSQL with Prisma (Supabase)
+   - Tables: advertisers, campaigns, publishers, impressions, viewers
 
-3. **Wallet integration in client** — wagmi + viem + RainbowKit
-   > 📌 `git commit -m "feat(client): add wallet connection with wagmi and RainbowKit"`
+3. ✅ **Wallet integration in client** — wagmi + viem + RainbowKit
+
+4. ✅ **Backend blockchain module** — `server/src/blockchain/index.ts`
+   - EIP-712 signing for impressions and withdrawals
+   - On-chain balance queries for viewers/publishers
 
 #### A2: Advertiser Flow
 
@@ -371,9 +383,9 @@ returns: { txHash: string, newBalance: number }
 
    > 📌 `git commit -m "feat(client): add publisher registration flow"`
 
-9. **Create `@web3ads/react` package** — Ad component for embedding
-
-   > 📌 `git commit -m "feat(packages): create @web3ads/react publisher SDK"`
+9. ✅ **Create `web3ads-react` package** — Published to npm v0.1.0
+   - Ad component for embedding with viewability tracking
+   - Extension detection via data attribute
 
 10. **Ad serving API** — `/api/ads/serve` returns ad based on type/category
 
@@ -408,19 +420,19 @@ returns: { txHash: string, newBalance: number }
 
     > 📌 `git commit -m "feat(server): add zkProof verification for viewer earnings"`
 
-18. **Viewer dashboard in extension** — Show accumulated earnings
-    > 📌 `git commit -m "feat(extension): add viewer earnings popup UI"`
+18. ✅ **Viewer dashboard in extension** — Shows accumulated earnings
+
+19. ✅ **Viewer withdrawal UI** — Balance display + withdraw button in client
 
 #### A5: Reward Distribution
 
-19. **Revenue split logic** —
+20. **Revenue split logic** —
     - With extension proof: Publisher 50%, Viewer 20%, Platform 30%
     - Without extension: Publisher 50%, Platform 50%
       > 📌 `git commit -m "feat(server): implement revenue split logic"`
 
-20. **Claim function** — Publishers/Viewers can claim accumulated USDC
-21. **Minimum threshold** — $10 minimum for withdrawal
-    > 📌 `git commit -m "feat(contracts): add reward claim functions with threshold"`
+21. ✅ **Claim function** — Viewer withdrawal with EIP-712 signatures
+22. **Minimum threshold** — $10 minimum for withdrawal (contract-enforced)
 
 ---
 
@@ -518,13 +530,13 @@ Week 4: Polish + Phase B Start
 
 ## Verification Steps
 
-1. **Smart contracts:** Deploy to Base Sepolia, verify on Basescan
-2. **Ad serving:** Create test campaign, verify ad appears
-3. **Impressions:** Confirm tracking updates advertiser spend
-4. **zkProofs:** Generate proof in extension, verify on-chain
-5. **Payouts:** Claim rewards to wallet
-6. **Gasless:** Sponsor transaction from ad balance
-7. **MCP:** Connect Claude Desktop, check balance via tool
+1. ✅ **Smart contracts:** Deployed to Base Sepolia at `0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872`
+2. ⏳ **Ad serving:** Create test campaign, verify ad appears
+3. ⏳ **Impressions:** Confirm tracking updates advertiser spend
+4. ⏳ **zkProofs:** Generate proof in extension, verify on-chain
+5. ✅ **Payouts:** Viewer withdrawal UI and backend proof endpoints implemented
+6. ⏳ **Gasless:** Sponsor transaction from ad balance
+7. ⏳ **MCP:** Connect Claude Desktop, check balance via tool
 
 ---
 
@@ -532,9 +544,9 @@ Week 4: Polish + Phase B Start
 
 **New directories:**
 
-- `contracts/` - Solidity smart contracts
-- `packages/web3ads-react/` - Publisher NPM package
-- `packages/mcp-server/` - x402 MCP integration
+- `contracts/` - ✅ Solidity smart contracts (deployed)
+- `packages/react/` - ✅ Publisher NPM package (published as `web3ads-react`)
+- `packages/mcp-server/` - x402 MCP integration (pending)
 
 **Client modifications:**
 
@@ -544,9 +556,9 @@ Week 4: Polish + Phase B Start
 
 **Server modifications:**
 
-- `server/src/routes/` - API route handlers
-- `server/src/services/` - Business logic
-- `server/src/db/` - Prisma schema and migrations
+- `server/src/routes/` - ✅ API route handlers (ads, viewers, publishers)
+- `server/src/blockchain/` - ✅ Blockchain signing and queries
+- `server/src/db/` - ✅ Prisma schema and migrations
 
 **Extension modifications:**
 
