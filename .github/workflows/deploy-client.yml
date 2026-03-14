@@ -7,6 +7,7 @@ on:
             - main
         paths:
             - "client/**"
+            - "pnpm-lock.yaml"
             - ".github/workflows/deploy-client.yml"
     pull_request:
         types: [opened, synchronize, reopened, closed]
@@ -14,6 +15,7 @@ on:
             - main
         paths:
             - "client/**"
+            - "pnpm-lock.yaml"
 
 jobs:
     build_and_deploy:
