@@ -2,6 +2,10 @@ import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
 import { AdType, CampaignStatus } from "@prisma/client";
 import crypto from "crypto";
+import {
+  signImpression,
+  isBlockchainEnabled,
+} from "../blockchain/index.js";
 
 const router: IRouter = Router();
 
@@ -351,6 +355,65 @@ router.post("/impression", async (req, res) => {
     console.error("Error recording impression:", error);
     return res.status(500).json({ error: "Failed to record impression" });
   }
+});
+
+// Sign an impression for on-chain recording (optional endpoint)
+router.post("/sign-impression", async (req, res) => {
+  try {
+    const { advertiser, campaignId, publisher, viewerCommitment, nullifier } =
+      req.body;
+
+    if (!advertiser || !campaignId || !publisher || !nullifier) {
+      return res.status(400).json({
+        error:
+          "Missing required fields: advertiser, campaignId, publisher, nullifier",
+      });
+    }
+
+    if (!isBlockchainEnabled()) {
+      return res.status(503).json({
+        error: "Blockchain integration not configured",
+      });
+    }
+
+    // Generate signature
+    const signature = await signImpression({
+      advertiser: advertiser as `0x${string}`,
+      campaignId: campaignId as `0x${string}`,
+      publisher: publisher as `0x${string}`,
+      viewerCommitment: (viewerCommitment ||
+        "0x0000000000000000000000000000000000000000000000000000000000000000") as `0x${string}`,
+      nullifier: nullifier as `0x${string}`,
+    });
+
+    if (!signature) {
+      return res.status(500).json({ error: "Failed to generate signature" });
+    }
+
+    return res.json({
+      signature,
+      parameters: {
+        advertiser,
+        campaignId,
+        publisher,
+        viewerCommitment:
+          viewerCommitment ||
+          "0x0000000000000000000000000000000000000000000000000000000000000000",
+        nullifier,
+      },
+    });
+  } catch (error) {
+    console.error("Error signing impression:", error);
+    return res.status(500).json({ error: "Failed to sign impression" });
+  }
+});
+
+// Check blockchain status
+router.get("/blockchain-status", async (_req, res) => {
+  return res.json({
+    enabled: isBlockchainEnabled(),
+    contract: process.env.WEB3ADS_CORE_ADDRESS || null,
+  });
 });
 
 export default router;

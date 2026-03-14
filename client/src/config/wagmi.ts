@@ -6,7 +6,7 @@ import { base, baseSepolia } from "wagmi/chains";
 export const CONTRACT_ADDRESSES = {
   // Base Sepolia (testnet)
   baseSepolia: {
-    web3AdsCore: "0x0000000000000000000000000000000000000000", // TODO: Update after deploy
+    web3AdsCore: "0x94f31c33b675Ac968dAda3F5E22f6dBC22A7F872", // Deployed!
     usdc: "0x036CbD53842c5426634e7929541eC2318f3dCF7e", // Base Sepolia USDC
   },
   // Base Mainnet
