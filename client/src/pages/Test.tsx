@@ -123,7 +123,7 @@ export function TestPage() {
                                     category="test"
                                     testMode={testMode}
                                     onImpression={handleImpression}
-                                    onError={(err) => console.error("Ad error:", err)}
+                                    onError={(err: Error) => console.error("Ad error:", err)}
                                 />
                             </div>
 
