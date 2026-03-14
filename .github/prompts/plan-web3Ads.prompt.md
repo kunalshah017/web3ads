@@ -5,7 +5,7 @@
 Web3Ads is a decentralized advertising platform where users can advertise, publish ads, or earn by viewing ads. The platform uses zkProofs for privacy-preserving ad tracking and integrates with x402 for AI agent payments.
 
 **Target Hackathon:** ETHMumbai 2026
-**Prize Pool Target:** Multiple tracks - Privacy ($500), DeFi ($500), AI ($500), HeyElsa x402 ($1,000), Base AI×Onchain ($350)
+**Prize Pool Target:** Multiple tracks - Privacy ($500), DeFi ($500), AI ($500), HeyElsa x402 ($2,000), Base AI×Onchain ($350), Base DeFi 2.0 ($350)
 
 ---
 
@@ -13,35 +13,39 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 
 ### ✅ Completed
 
-| Component                  | Status  | Notes                                                                 |
-| -------------------------- | ------- | --------------------------------------------------------------------- |
-| **Server API**             | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL                              |
-| **Viewer Registration**    | ✅ Done | `/api/viewers/register`, `/api/viewers/profile`, `/api/viewers/stats` |
-| **Client Web App**         | ✅ Done | React + Vite + wagmi + RainbowKit                                     |
-| **Viewer Page**            | ✅ Done | Semaphore identity generation, wallet linking                         |
-| **Chrome Extension**       | ✅ Done | Identity storage, popup UI, switch wallet                             |
-| **web3ads-react SDK**      | ✅ Done | Published to npm v0.1.0, Ad component, extension detection            |
-| **Smart Contracts V1**     | ✅ Done | Web3AdsCore (USDC) deployed to Base Sepolia                           |
-| **Smart Contracts V2**     | ✅ Done | Web3AdsCoreV2 (ETH) + Forwarder for gasless                           |
-| **Backend Signing**        | ✅ Done | EIP-712 signatures for impressions and withdrawals                    |
-| **Viewer Withdrawal**      | ✅ Done | Backend calls contract directly (pays gas)                            |
-| **zkProof Verification**   | ✅ Done | Simplified nullifier-based (commitment + secret hash per ad)          |
-| **Impression Tracking**    | ✅ Done | Rate limiting, fraud prevention, viewability (IntersectionObserver)   |
-| **Publisher Dashboard**    | ✅ Done | Earnings from server, embed code, withdrawal UI                       |
-| **Advertiser Dashboard**   | ✅ Done | Campaign creation, server sync, analytics (impressions/spent)         |
-| **Info Page**              | ✅ Done | Demo vs Production pricing tables, technical specs                    |
-| **Gasless Transactions**   | ✅ Done | Backend pays gas for viewer withdrawals (simplified for hackathon)    |
-| **Gasless Payment Page**   | ✅ Done | `/gasless` - Send ETH to any address using ad earnings, $0 gas        |
-| **Publisher Gasless**      | ✅ Done | `withdrawPublisherTo()` contract function for publisher gasless       |
-| **V2 Contract Deployment** | ✅ Done | Web3AdsCoreV2 + Forwarder deployed & verified on Base Sepolia         |
-| **Client V2 Update**       | ✅ Done | Advertiser page uses ETH-based V2 hooks, no USDC approval needed      |
-| **x402 MCP Server**        | ✅ Done | `packages/mcp-server/` with balance, payment, earnings tools          |
+| Component                   | Status  | Notes                                                                 |
+| --------------------------- | ------- | --------------------------------------------------------------------- |
+| **Server API**              | ✅ Done | Express + Prisma 7 + Supabase PostgreSQL                              |
+| **Viewer Registration**     | ✅ Done | `/api/viewers/register`, `/api/viewers/profile`, `/api/viewers/stats` |
+| **Client Web App**          | ✅ Done | React + Vite + wagmi + RainbowKit                                     |
+| **Viewer Page**             | ✅ Done | Semaphore identity generation, wallet linking                         |
+| **Chrome Extension**        | ✅ Done | Identity storage, popup UI, switch wallet                             |
+| **web3ads-react SDK**       | ✅ Done | Published to npm v0.1.0, Ad component, extension detection            |
+| **Smart Contracts V1**      | ✅ Done | Web3AdsCore (USDC) deployed to Base Sepolia                           |
+| **Smart Contracts V2**      | ✅ Done | Web3AdsCoreV2 (ETH) + Forwarder for gasless                           |
+| **Backend Signing**         | ✅ Done | EIP-712 signatures for impressions and withdrawals                    |
+| **Viewer Withdrawal**       | ✅ Done | Backend calls contract directly (pays gas)                            |
+| **zkProof Verification**    | ✅ Done | Simplified nullifier-based (commitment + secret hash per ad)          |
+| **Impression Tracking**     | ✅ Done | Rate limiting, fraud prevention, viewability (IntersectionObserver)   |
+| **Publisher Dashboard**     | ✅ Done | Earnings from server, embed code, withdrawal UI                       |
+| **Advertiser Dashboard**    | ✅ Done | Campaign creation, server sync, analytics (impressions/spent)         |
+| **Info Page**               | ✅ Done | Demo vs Production pricing tables, technical specs                    |
+| **Gasless Transactions**    | ✅ Done | Backend pays gas for viewer withdrawals (simplified for hackathon)    |
+| **Gasless Payment Page**    | ✅ Done | `/gasless` - Send ETH to any address using ad earnings, $0 gas        |
+| **Publisher Gasless**       | ✅ Done | `withdrawPublisherTo()` contract function for publisher gasless       |
+| **V2 Contract Deployment**  | ✅ Done | Web3AdsCoreV2 + Forwarder deployed & verified on Base Sepolia         |
+| **Client V2 Update**        | ✅ Done | Advertiser page uses ETH-based V2 hooks, no USDC approval needed      |
+| **x402 MCP Server**         | ✅ Done | `packages/mcp-server/` with balance, payment, earnings tools          |
+| **MCP npm Package**         | ✅ Done | Published `web3ads-mcp@1.0.0` to npm                                  |
+| **OpenClaw Skill-Pack**     | ✅ Done | `packages/openclaw-skill/` with 8 tools for HeyElsa                   |
+| **x402-express Middleware** | ✅ Done | Official Coinbase x402 protocol + Web3Ads balance payment             |
 
 ### 🔄 In Progress / Remaining
 
-| Component               | Status      | Notes                        |
-| ----------------------- | ----------- | ---------------------------- |
-| **Publish MCP Package** | ⏳ Optional | Publish `web3ads-mcp` to npm |
+| Component                | Status  | Notes                                           |
+| ------------------------ | ------- | ----------------------------------------------- |
+| **Base AI×Onchain Docs** | ✅ Done | README: AI × Onchain section with flow diagrams |
+| **Base DeFi 2.0 Docs**   | ✅ Done | README: DeFi Mechanics section with fund flow   |
 
 ### 🏗️ Key Architecture Decisions Made
 
@@ -74,6 +78,56 @@ Web3Ads is a decentralized advertising platform where users can advertise, publi
 | **ENS**            | User-friendly names for publishers/advertisers     | MEDIUM   |
 | **BitGo**          | Custody for platform treasury (optional)           | LOW      |
 | **Fileverse**      | Decentralized ad media storage (optional)          | LOW      |
+
+---
+
+## Hackathon Prize Track Assessment
+
+### Prize Track Summary
+
+| Track               | Prize  | Status  | Evidence                                                  |
+| ------------------- | ------ | ------- | --------------------------------------------------------- |
+| **HeyElsa x402**    | $1,000 | ✅ Done | MCP server (`web3ads-mcp@1.0.0`), x402-express middleware |
+| **HeyElsa SDK**     | $1,000 | ✅ Done | OpenClaw skill-pack with 8 tools                          |
+| **Base AI×Onchain** | $350   | ✅ Done | README: AI × Onchain section, MCP → contract flow         |
+| **Base DeFi 2.0**   | $350   | ✅ Done | README: DeFi Mechanics section, fund flow diagrams        |
+| **Privacy Track**   | $500   | ✅ Done | Semaphore zkProof identity, nullifier-based verification  |
+| **Total Potential** | $3,200 |         |                                                           |
+
+### HeyElsa Integration Details (Complete)
+
+**x402 Protocol ($1,000)**:
+
+- `server/src/middleware/x402.ts` - Official `x402-express` package from Coinbase
+- `/api/x402-info` endpoint for AI agent discovery
+- HTTP 402 Payment Required responses with proper headers
+- Unique feature: Web3Ads balance as gasless payment source
+
+**OpenClaw Skill-Pack ($1,000)**:
+
+- `packages/openclaw-skill/` - 8 tools for HeyElsa agents
+- Read-only: `check_balance`, `get_earnings`, `platform_info`, `payment_info`, `list_campaigns`, `budget_status`
+- Execution: `create_campaign`, `fund_campaign`, `pay_x402`
+- npm: `web3ads-mcp@1.0.0`
+
+### Base AI×Onchain (Complete)
+
+**Documentation added to README:**
+
+- AI × Onchain section with transaction flow diagram
+- MCP tool → Backend API → Smart Contract execution chain
+- Supported on-chain operations table
+- Gasless execution explanation
+
+### Base DeFi 2.0 (Complete)
+
+**Documentation added to README:**
+
+- DeFi Mechanics section with fund flow diagram
+- Smart contract revenue distribution code
+- CPM pricing model table
+- Withdrawal mechanics (publisher + viewer)
+- Security features list
 
 ---
 

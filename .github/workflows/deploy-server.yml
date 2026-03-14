@@ -22,7 +22,9 @@ jobs:
                   mkdir -p deploy
                   cp -r src deploy/
                   cp package.json deploy/
+                  cp package-lock.json deploy/ 2>/dev/null || true
                   cp tsconfig.json deploy/
+                  cp .deployment deploy/
                   cp -r prisma deploy/
                   cd deploy && zip -r ../deploy.zip .
 

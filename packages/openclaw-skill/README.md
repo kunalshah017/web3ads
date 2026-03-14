@@ -8,7 +8,8 @@ OpenClaw skill-pack that enables AI agents to interact with Web3Ads - a decentra
 
 ## 🎯 Unique Value Proposition
 
-**Web3Ads earnings as universal x402 payment source**: 
+**Web3Ads earnings as universal x402 payment source**:
+
 - Earn ETH by viewing/publishing ads
 - Use those earnings to pay for Web3Ads campaigns
 - Use those earnings to pay for ANY x402-compatible API (HeyElsa, etc.)
@@ -53,21 +54,21 @@ The skill will load automatically. Verify with `/skills` in chat.
 
 ### Read-Only (Always Available)
 
-| Tool | Description |
-|------|-------------|
-| `web3ads_check_balance` | Check your Web3Ads earnings |
-| `web3ads_get_earnings` | Detailed breakdown by source |
-| `web3ads_platform_info` | Platform info and pricing |
-| `web3ads_payment_info` | x402 payment requirements |
-| `web3ads_list_campaigns` | Your ad campaigns |
-| `web3ads_budget_status` | Skill budget usage |
+| Tool                     | Description                  |
+| ------------------------ | ---------------------------- |
+| `web3ads_check_balance`  | Check your Web3Ads earnings  |
+| `web3ads_get_earnings`   | Detailed breakdown by source |
+| `web3ads_platform_info`  | Platform info and pricing    |
+| `web3ads_payment_info`   | x402 payment requirements    |
+| `web3ads_list_campaigns` | Your ad campaigns            |
+| `web3ads_budget_status`  | Skill budget usage           |
 
 ### Execution (Opt-In)
 
-| Tool | Description |
-|------|-------------|
-| `web3ads_create_campaign` | Create and fund ad campaign |
-| `web3ads_pay_x402` | Pay any x402 API with earnings |
+| Tool                      | Description                    |
+| ------------------------- | ------------------------------ |
+| `web3ads_create_campaign` | Create and fund ad campaign    |
+| `web3ads_pay_x402`        | Pay any x402 API with earnings |
 
 Enable with `WEB3ADS_ENABLE_EXECUTION=true`
 
@@ -89,13 +90,13 @@ YOU: "Use my Web3Ads earnings to pay 0.001 ETH to 0x..."
 
 ## ⚙️ Environment Variables
 
-| Variable | Required | Default | Description |
-|----------|----------|---------|-------------|
-| `WEB3ADS_WALLET_ADDRESS` | Yes | - | Your wallet address |
-| `WEB3ADS_API_URL` | No | `https://api.web3ads.wtf` | API endpoint |
-| `WEB3ADS_ENABLE_EXECUTION` | No | `false` | Enable execution tools |
-| `WEB3ADS_MAX_USD_PER_CALL` | No | `1.00` | Per-call limit |
-| `WEB3ADS_MAX_USD_PER_DAY` | No | `10.00` | Daily limit |
+| Variable                   | Required | Default                   | Description            |
+| -------------------------- | -------- | ------------------------- | ---------------------- |
+| `WEB3ADS_WALLET_ADDRESS`   | Yes      | -                         | Your wallet address    |
+| `WEB3ADS_API_URL`          | No       | `https://api.web3ads.wtf` | API endpoint           |
+| `WEB3ADS_ENABLE_EXECUTION` | No       | `false`                   | Enable execution tools |
+| `WEB3ADS_MAX_USD_PER_CALL` | No       | `1.00`                    | Per-call limit         |
+| `WEB3ADS_MAX_USD_PER_DAY`  | No       | `10.00`                   | Daily limit            |
 
 ## 🔐 Security
 

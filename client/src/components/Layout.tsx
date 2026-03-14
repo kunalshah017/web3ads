@@ -17,7 +17,7 @@ export function Layout() {
         <div className="flex min-h-screen flex-col bg-black text-white">
             <header className="flex items-center justify-between border-b-4 border-white px-6 py-4">
                 <Link to="/" className="flex items-center gap-3 text-white no-underline">
-                    <span className="text-3xl text-[#ff3e00]">◈</span>
+                    <img src="/logo-dark.png" alt="Web3Ads" className="h-12 w-12" />
                     <span className="font-mono text-xl font-black uppercase tracking-widest">WEB3ADS</span>
                 </Link>
                 <nav className="flex gap-1">
@@ -40,15 +40,18 @@ export function Layout() {
                 <Outlet />
             </main>
             <footer className="border-t-4 border-zinc-800 px-6 py-6 text-center">
-                <p className="font-mono text-xs font-bold uppercase tracking-widest text-zinc-500">
-                    BUILT FOR ETHMUMBAI 2026
-                </p>
+                <div className="flex items-center justify-center gap-3">
+                    <img src="/logo-dark.png" alt="Web3Ads" className="h-6 w-6 opacity-50" />
+                    <span className="font-mono text-xs font-bold uppercase tracking-widest text-zinc-500">
+                        WEB3ADS
+                    </span>
+                </div>
                 <div className="mt-2 flex items-center justify-center gap-3 font-mono text-xs text-zinc-600">
                     <span>BASE L2</span>
                     <span className="text-[#ff3e00]">•</span>
-                    <span>SEMAPHORE</span>
+                    <span>PRIVACY-FIRST</span>
                     <span className="text-[#ff3e00]">•</span>
-                    <span>ETH</span>
+                    <span>GASLESS</span>
                 </div>
             </footer>
         </div>

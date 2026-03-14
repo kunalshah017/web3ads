@@ -66,7 +66,7 @@ export function HomePage() {
                             <span className="font-mono text-xs uppercase text-zinc-600">PACKAGE</span>
                         </div>
                         <div>
-                            <span className="block font-mono text-2xl font-black text-[#ff3e00]">USDC</span>
+                            <span className="block font-mono text-2xl font-black text-[#ff3e00]">ETH</span>
                             <span className="font-mono text-xs uppercase text-zinc-600">PAYOUTS</span>
                         </div>
                     </div>
@@ -111,10 +111,10 @@ export function HomePage() {
                 </h2>
                 <div className="mt-8 grid gap-4 md:grid-cols-4">
                     {[
-                        { num: "01", title: "ADVERTISERS DEPOSIT USDC", desc: "Set budget, choose ad type, upload creative" },
+                        { num: "01", title: "ADVERTISERS DEPOSIT ETH", desc: "Set budget, choose ad type, upload creative" },
                         { num: "02", title: "PUBLISHERS EMBED ADS", desc: "One React component, instant monetization" },
                         { num: "03", title: "VIEWERS GET REWARDED", desc: "zkProof verifies views without tracking" },
-                        { num: "04", title: "EVERYONE WITHDRAWS", desc: "Claim USDC or use for gasless txs" },
+                        { num: "04", title: "EVERYONE WITHDRAWS", desc: "Claim ETH or use for gasless txs" },
                     ].map((step) => (
                         <div key={step.num} className="border-l-4 border-[#ff3e00] pl-4">
                             <span className="font-mono text-3xl font-black text-zinc-700">{step.num}</span>
@@ -131,7 +131,7 @@ export function HomePage() {
                     BUILT WITH
                 </h2>
                 <div className="mt-8 grid grid-cols-4 gap-4">
-                    {["BASE L2", "SEMAPHORE", "USDC", "x402"].map((tech) => (
+                    {["BASE L2", "SEMAPHORE", "ETH", "GASLESS"].map((tech) => (
                         <div
                             key={tech}
                             className="border-4 border-zinc-800 bg-zinc-900 p-4 text-center font-mono text-sm font-bold uppercase tracking-wider text-zinc-400"

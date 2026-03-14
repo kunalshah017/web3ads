@@ -71,7 +71,10 @@ const Popup = () => {
       <div className="web3ads-popup">
         {/* Header */}
         <div className="header">
-          <div className="logo">◈ WEB3ADS</div>
+          <div className="logo-container">
+            <img src="/icon-128.png" alt="Web3Ads" className="logo-img" />
+            <span className="logo">WEB3ADS</span>
+          </div>
           <div className="tagline">EARN FROM ADS YOU VIEW</div>
         </div>
 
@@ -109,7 +112,10 @@ const Popup = () => {
     <div className="web3ads-popup">
       {/* Header */}
       <div className="header">
-        <div className="logo">◈ WEB3ADS</div>
+        <div className="logo-container">
+          <img src="/icon-128.png" alt="Web3Ads" className="logo-img" />
+          <span className="logo">WEB3ADS</span>
+        </div>
         <div className="tagline">EARN FROM ADS YOU VIEW</div>
       </div>
 

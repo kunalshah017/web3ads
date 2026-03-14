@@ -68,7 +68,7 @@ export function GaslessPaymentPage() {
         }
 
         const amountNum = parseFloat(amount);
-        const availableBalance = balance?.total.pending || 0;
+        const availableBalance = balance?.total?.pending || 0;
 
         if (amountNum > availableBalance) {
             setError(
@@ -111,7 +111,7 @@ export function GaslessPaymentPage() {
     };
 
     const setMaxAmount = () => {
-        if (balance?.total.pending) {
+        if (balance?.total?.pending) {
             setAmount(balance.total.pending.toString());
         }
     };
@@ -169,12 +169,12 @@ export function GaslessPaymentPage() {
                             <div className="flex items-end gap-4">
                                 <div>
                                     <span className="text-5xl font-black text-white">
-                                        {balance?.total.pending.toFixed(6) || "0.000000"}
+                                        {balance?.total?.pending?.toFixed(6) || "0.000000"}
                                     </span>
                                     <span className="text-2xl text-zinc-500 ml-2">ETH</span>
                                 </div>
                                 <span className="text-zinc-500 font-mono pb-2">
-                                    ≈ ${ethToUsd(balance?.total.pending || 0)} USD
+                                    ≈ ${ethToUsd(balance?.total?.pending || 0)} USD
                                 </span>
                             </div>
 
