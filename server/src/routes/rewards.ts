@@ -338,10 +338,11 @@ router.post("/gasless-pay", async (req, res) => {
       );
     }
 
-    // Demo mode: If on-chain balance is 0 but we have DB balance,
+    // Demo mode: If blockchain not enabled OR on-chain balance is 0 but we have DB balance,
     // do a "demo withdrawal" that just updates the database
     const isDemoMode =
-      blockchainEnabled && totalAvailable > 0 && onChainPublisherBalance === 0n;
+      (!blockchainEnabled && totalAvailable > 0) ||
+      (blockchainEnabled && totalAvailable > 0 && onChainPublisherBalance === 0n);
 
     // Determine which balance(s) to use and execute withdrawal(s)
     let txHash: string | null = null;
