@@ -69,7 +69,7 @@ export function AdvertiserPage() {
 
     // Transaction state - no more approval step for ETH
     const [step, setStep] = useState<"idle" | "creating" | "activating">("idle");
-    const [pendingCampaignId, setPendingCampaignId] = useState<`0x${string}` | null>(null);
+    const [_pendingCampaignId, setPendingCampaignId] = useState<`0x${string}` | null>(null);
 
     // Use ref to store campaign details - survives all React re-renders
     const pendingCampaignRef = useRef<PendingCampaignDetails | null>(null);
