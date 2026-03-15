@@ -15,7 +15,7 @@ import {
 import { AdType, AD_TYPE_LABELS } from "../contracts/Web3AdsCoreV2";
 import { uploadAdImage } from "../lib/supabase";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "https://api.web3ads.wtf";
 
 // Store pending campaign details in a ref to prevent React state timing issues
 interface PendingCampaignDetails {

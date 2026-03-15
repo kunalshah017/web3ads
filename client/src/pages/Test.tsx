@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Web3Ad, setApiUrl } from "web3ads-react";
 
 // Set API URL for local development
-setApiUrl(import.meta.env.VITE_API_URL || "http://localhost:3001");
+setApiUrl(import.meta.env.VITE_API_URL || "https://api.web3ads.wtf");
 
 // CPM rates from smart contract (in ETH)
 const CPM_RATES = {

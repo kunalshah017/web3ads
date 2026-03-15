@@ -5,7 +5,7 @@ import { Link } from "react-router-dom";
 import { useETHBalance } from "../hooks/useContractsV2";
 import { usePublisherBalance } from "../hooks/useContracts";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "https://api.web3ads.wtf";
 
 interface ServerCampaign {
     id: string;

@@ -2,7 +2,7 @@ import { useAccount } from "wagmi";
 import { WalletButton } from "../components/WalletButton";
 import { useState, useEffect, useCallback } from "react";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "https://api.web3ads.wtf";
 
 interface PublisherStats {
     totalViews: number;
