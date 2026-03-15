@@ -19,7 +19,7 @@ export const CONTRACT_ADDRESSES = {
 // RainbowKit + wagmi config
 export const config = getDefaultConfig({
   appName: "Web3Ads",
-  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "YOUR_PROJECT_ID",
+  projectId: import.meta.env.VITE_WALLETCONNECT_PROJECT_ID || "9cf1d97e4de338a619668f3aa1486023",
   chains: [baseSepolia, base],
   transports: {
     [baseSepolia.id]: http(

@@ -20,10 +20,8 @@ const STORAGE_KEYS = {
   VIEWED_ADS: 'web3ads_viewed_ads',
 };
 
-// API URL - defaults to production, override with WEB3ADS_API_URL env var for development
-const API_URL =
-  process.env.WEB3ADS_API_URL ||
-  (process.env.NODE_ENV === 'development' ? 'http://localhost:3001' : 'https://api.web3ads.wtf');
+// API URL - hardcoded to production (process.env gets stripped by extension bundler)
+const API_URL = 'https://api.web3ads.wtf';
 
 /**
  * Helper to convert ArrayBuffer to hex string
