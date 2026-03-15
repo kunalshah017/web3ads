@@ -7,7 +7,13 @@ import type {
 } from "@prisma/client";
 const { AdType, CampaignStatus } = pkg;
 import crypto from "crypto";
-import { signImpression, isBlockchainEnabled } from "../blockchain/index.js";
+import { keccak256, toHex } from "viem";
+import {
+  signImpression,
+  isBlockchainEnabled,
+  recordImpressionOnChainV2,
+  isBlockchainV2Enabled,
+} from "../blockchain/index.js";
 
 const router: IRouter = Router();
 
@@ -25,6 +31,15 @@ const RATE_LIMITS = {
   MAX_PER_FINGERPRINT_PER_HOUR: 20,
   WINDOW_MS: 60 * 60 * 1000, // 1 hour
 };
+
+// Helper to generate blockchain campaign ID (must match client-side generation)
+function generateBlockchainCampaignId(
+  walletAddress: string,
+  campaignName: string,
+): `0x${string}` {
+  const input = `${walletAddress.toLowerCase()}-${campaignName}`.toLowerCase();
+  return keccak256(toHex(input));
+}
 
 // Helper to hash identifiers
 function hashIdentifier(value: string): string {
@@ -72,16 +87,20 @@ router.get("/serve", async (req, res) => {
     // Build query conditions
     const where: any = {
       status: CampaignStatus.ACTIVE,
-      budget: { gt: prisma.campaign.fields.spent },
     };
 
-    if (type && Object.values(AdType).includes(type as AdTypeT)) {
-      where.adType = type as AdTypeT;
+    // Filter by ad type if specified (convert to uppercase for enum matching)
+    if (type && typeof type === "string") {
+      const upperType = type.toUpperCase() as AdTypeT;
+      if (Object.values(AdType).includes(upperType)) {
+        where.adType = upperType;
+      }
     }
 
-    if (category && typeof category === "string") {
-      where.category = category;
-    }
+    // Note: Category filtering disabled for hackathon demo
+    // if (category && typeof category === "string") {
+    //   where.category = category;
+    // }
 
     // Find eligible campaigns (random selection weighted by remaining budget)
     const campaigns = await prisma.campaign.findMany({
@@ -100,20 +119,38 @@ router.get("/serve", async (req, res) => {
       take: 10,
     });
 
-    if (campaigns.length === 0) {
+    console.log(
+      `[Ad Serve] Query: type=${type}, where.adType=${where.adType}, Found ${campaigns.length} campaigns with status ACTIVE`,
+    );
+    campaigns.forEach((c) =>
+      console.log(
+        `  - ${c.name} (${c.adType}): budget=${c.budget}, spent=${c.spent}`,
+      ),
+    );
+
+    // Filter campaigns that have remaining budget (budget > spent)
+    const eligibleCampaigns = campaigns.filter(
+      (c) => Number(c.budget) > Number(c.spent),
+    );
+
+    console.log(
+      `[Ad Serve] ${eligibleCampaigns.length} campaigns have remaining budget`,
+    );
+
+    if (eligibleCampaigns.length === 0) {
       return res.json({ ad: null, message: "No eligible ads found" });
     }
 
     // Weight selection by remaining budget
-    const totalRemainingBudget = campaigns.reduce(
+    const totalRemainingBudget = eligibleCampaigns.reduce(
       (sum, c) => sum + (Number(c.budget) - Number(c.spent)),
       0,
     );
 
     let random = Math.random() * totalRemainingBudget;
-    let selectedCampaign = campaigns[0];
+    let selectedCampaign = eligibleCampaigns[0];
 
-    for (const campaign of campaigns) {
+    for (const campaign of eligibleCampaigns) {
       const remaining = Number(campaign.budget) - Number(campaign.spent);
       random -= remaining;
       if (random <= 0) {
@@ -162,6 +199,10 @@ router.post("/impression", async (req, res) => {
           "Missing required fields: campaignId, publisherWallet, impressionToken",
       });
     }
+
+    console.log(
+      `[Ad Impression] Received: campaign=${campaignId}, publisher=${publisherWallet}, token=${impressionToken?.slice(0, 8)}..., nullifier=${semaphoreNullifier?.slice(0, 16) || "none"}`,
+    );
 
     // Get client IP
     const ip =
@@ -216,25 +257,54 @@ router.post("/impression", async (req, res) => {
     }
 
     // Check semaphore nullifier uniqueness (prevents double-counting with extension)
-    if (semaphoreNullifier) {
+    // Only check if it's a valid non-zero nullifier
+    const isValidNullifier =
+      semaphoreNullifier &&
+      semaphoreNullifier !==
+        "0x0000000000000000000000000000000000000000000000000000000000000000" &&
+      semaphoreNullifier.length > 10;
+
+    if (isValidNullifier) {
       const existingNullifier = await prisma.impression.findUnique({
         where: { semaphoreNullifier },
       });
 
       if (existingNullifier) {
-        return res.status(409).json({ error: "Duplicate proof submitted" });
+        console.log(
+          `[Ad Impression] Duplicate nullifier detected: ${semaphoreNullifier?.slice(0, 16)}... - returning cached success`,
+        );
+        // Return success but indicate it's a duplicate (already counted)
+        return res.status(200).json({
+          success: true,
+          impression: {
+            id: existingNullifier.id,
+            verified: true,
+            duplicate: true,
+            message: "Impression already recorded",
+          },
+        });
       }
     }
 
-    // Get campaign details
+    // Get campaign details with advertiser wallet
     const campaign = await prisma.campaign.findUnique({
       where: { id: campaignId },
       select: {
         id: true,
+        name: true,
         cpmRate: true,
         budget: true,
         spent: true,
         status: true,
+        advertiser: {
+          select: {
+            user: {
+              select: {
+                walletAddress: true,
+              },
+            },
+          },
+        },
       },
     });
 
@@ -373,6 +443,47 @@ router.post("/impression", async (req, res) => {
       });
     }
 
+    // Record impression on-chain (V2 contract) - this is what credits publisher/viewer balances
+    let onChainTxHash: string | null = null;
+    if (isBlockchainV2Enabled() && campaign.advertiser?.user?.walletAddress) {
+      const advertiserWallet = campaign.advertiser.user
+        .walletAddress as `0x${string}`;
+      const blockchainCampaignId = generateBlockchainCampaignId(
+        advertiserWallet,
+        campaign.name,
+      );
+      const nullifier = keccak256(toHex(`${impression.id}-${Date.now()}`)); // Unique nullifier per impression
+      const viewerCommitmentBytes = (viewerCommitment ||
+        "0x0000000000000000000000000000000000000000000000000000000000000000") as `0x${string}`;
+
+      console.log(
+        `[Ad Impression] Recording on-chain: advertiser=${advertiserWallet}, campaignId=${blockchainCampaignId}, publisher=${publisherWallet}`,
+      );
+
+      // Fire and forget - don't block the response on blockchain confirmation
+      recordImpressionOnChainV2({
+        advertiser: advertiserWallet,
+        campaignId: blockchainCampaignId,
+        publisher: publisherWallet.toLowerCase() as `0x${string}`,
+        viewerCommitment: viewerCommitmentBytes,
+        nullifier,
+      })
+        .then((hash) => {
+          if (hash) {
+            console.log(
+              `[Ad Impression] On-chain recording succeeded: ${hash}`,
+            );
+          } else {
+            console.warn(
+              `[Ad Impression] On-chain recording failed for impression ${impression.id}`,
+            );
+          }
+        })
+        .catch((err) => {
+          console.error(`[Ad Impression] On-chain recording error:`, err);
+        });
+    }
+
     return res.status(201).json({
       success: true,
       impression: {
@@ -380,6 +491,7 @@ router.post("/impression", async (req, res) => {
         verified: hasExtension,
         publisherEarning,
         viewerEarning,
+        onChainPending: isBlockchainV2Enabled(),
       },
     });
   } catch (error) {

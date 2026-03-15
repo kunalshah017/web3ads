@@ -4,7 +4,9 @@ import {
   withdrawViewerOnChain,
   withdrawPublisherOnChain,
   isBlockchainV2Enabled,
+  getPublisherBalanceOnChainV2,
 } from "../blockchain/index.js";
+import { formatEther } from "viem";
 
 const router: IRouter = Router();
 
@@ -321,11 +323,25 @@ router.post("/gasless-pay", async (req, res) => {
       });
     }
 
-    if (!isBlockchainV2Enabled()) {
-      return res.status(503).json({
-        error: "Blockchain integration not enabled. Please try again later.",
-      });
+    // Check if blockchain is enabled
+    const blockchainEnabled = isBlockchainV2Enabled();
+
+    // Check on-chain publisher balance (for demo purposes)
+    let onChainPublisherBalance = 0n;
+    if (blockchainEnabled && publisherPending > 0) {
+      onChainPublisherBalance =
+        (await getPublisherBalanceOnChainV2(
+          walletAddress.toLowerCase() as `0x${string}`,
+        )) || 0n;
+      console.log(
+        `[GaslessPay] On-chain publisher balance: ${formatEther(onChainPublisherBalance)} ETH (DB: ${publisherPending} ETH)`,
+      );
     }
+
+    // Demo mode: If on-chain balance is 0 but we have DB balance,
+    // do a "demo withdrawal" that just updates the database
+    const isDemoMode =
+      blockchainEnabled && totalAvailable > 0 && onChainPublisherBalance === 0n;
 
     // Determine which balance(s) to use and execute withdrawal(s)
     let txHash: string | null = null;
@@ -333,21 +349,20 @@ router.post("/gasless-pay", async (req, res) => {
     const dbUpdates: Promise<unknown>[] = [];
     const sources: string[] = [];
 
-    // Try publisher balance first (if available)
-    if (publisherPending > 0 && remainingAmount > 0 && user.publisher) {
-      const publisherWithdrawAmount = Math.min(
-        publisherPending,
-        remainingAmount,
+    if (isDemoMode) {
+      // DEMO MODE: Just update the database, no actual on-chain withdrawal
+      console.log(
+        `[GaslessPay] DEMO MODE: Simulating withdrawal for ${walletAddress} - ${amount} ETH`,
       );
 
-      txHash = await withdrawPublisherOnChain({
-        publisher: walletAddress.toLowerCase() as `0x${string}`,
-        recipient: recipient.toLowerCase() as `0x${string}`,
-      });
-
-      if (txHash) {
+      // Update publisher balance in DB
+      if (publisherPending > 0 && remainingAmount > 0 && user.publisher) {
+        const publisherWithdrawAmount = Math.min(
+          publisherPending,
+          remainingAmount,
+        );
         remainingAmount -= publisherWithdrawAmount;
-        sources.push(`publisher: ${publisherWithdrawAmount} ETH`);
+        sources.push(`publisher: ${publisherWithdrawAmount} ETH (demo)`);
 
         dbUpdates.push(
           prisma.publisher.update({
@@ -359,25 +374,12 @@ router.post("/gasless-pay", async (req, res) => {
           }),
         );
       }
-    }
 
-    // Use viewer balance for remaining amount (if needed)
-    if (
-      remainingAmount > 0 &&
-      viewerPending > 0 &&
-      user.viewer?.semaphoreCommitment
-    ) {
-      const viewerWithdrawAmount = Math.min(viewerPending, remainingAmount);
-
-      const viewerTxHash = await withdrawViewerOnChain({
-        commitment: user.viewer.semaphoreCommitment as `0x${string}`,
-        recipient: recipient.toLowerCase() as `0x${string}`,
-      });
-
-      if (viewerTxHash) {
-        txHash = viewerTxHash; // Use latest tx hash
+      // Update viewer balance in DB
+      if (remainingAmount > 0 && viewerPending > 0 && user.viewer) {
+        const viewerWithdrawAmount = Math.min(viewerPending, remainingAmount);
         remainingAmount -= viewerWithdrawAmount;
-        sources.push(`viewer: ${viewerWithdrawAmount} ETH`);
+        sources.push(`viewer: ${viewerWithdrawAmount} ETH (demo)`);
 
         dbUpdates.push(
           prisma.viewer.update({
@@ -389,6 +391,43 @@ router.post("/gasless-pay", async (req, res) => {
           }),
         );
       }
+
+      // Generate demo tx hash
+      txHash = `0xdemo_${Date.now().toString(16)}_${Math.random().toString(16).slice(2, 10)}`;
+    } else if (!blockchainEnabled) {
+      return res.status(503).json({
+        error: "Blockchain integration not enabled. Please try again later.",
+      });
+    } else {
+      // REAL MODE: Try actual on-chain withdrawal
+
+      // Try publisher balance first (if available)
+      if (publisherPending > 0 && remainingAmount > 0 && user.publisher) {
+        const publisherWithdrawAmount = Math.min(
+          publisherPending,
+          remainingAmount,
+        );
+
+        txHash = await withdrawPublisherOnChain({
+          publisher: walletAddress.toLowerCase() as `0x${string}`,
+          recipient: recipient.toLowerCase() as `0x${string}`,
+        });
+
+        if (txHash) {
+          remainingAmount -= publisherWithdrawAmount;
+          sources.push(`publisher: ${publisherWithdrawAmount} ETH`);
+
+          dbUpdates.push(
+            prisma.publisher.update({
+              where: { id: user.publisher.id },
+              data: {
+                pendingBalance: { decrement: publisherWithdrawAmount },
+                claimedBalance: { increment: publisherWithdrawAmount },
+              },
+            }),
+          );
+        }
+      }
     }
 
     // Check if we successfully withdrew anything
@@ -399,6 +438,8 @@ router.post("/gasless-pay", async (req, res) => {
           remainingAmount > 0
             ? `Could not withdraw full amount. Missing: ${remainingAmount} ETH`
             : "Transaction failed",
+        demoTip:
+          "Note: For demo, make sure to view ads first to accumulate on-chain balance.",
       });
     }
 
@@ -410,7 +451,7 @@ router.post("/gasless-pay", async (req, res) => {
       data: {
         walletAddress: walletAddress.toLowerCase(),
         amount: amount,
-        payoutType: "gasless",
+        payoutType: isDemoMode ? "demo" : "gasless",
         status: "completed",
         txHash: txHash,
       },
@@ -426,12 +467,15 @@ router.post("/gasless-pay", async (req, res) => {
       amount: amount,
       recipient: recipient,
       sources: sources,
+      demoMode: isDemoMode,
       payout: {
         id: payout.id,
         status: payout.status,
         createdAt: payout.createdAt,
       },
-      message: `Successfully sent ${amount} ETH to ${recipient}. Gas sponsored by Web3Ads!`,
+      message: isDemoMode
+        ? `[DEMO] Simulated withdrawal of ${amount} ETH. In production, this would be sent to ${recipient}.`
+        : `Successfully sent ${amount} ETH to ${recipient}. Gas sponsored by Web3Ads!`,
     });
   } catch (error) {
     console.error("Error processing gasless payment:", error);

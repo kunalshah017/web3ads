@@ -35,10 +35,6 @@ export const router = createBrowserRouter([
                 element: <DashboardPage />,
             },
             {
-                path: "test",
-                element: <TestPage />,
-            },
-            {
                 path: "info",
                 element: <Info />,
             },
@@ -47,5 +43,10 @@ export const router = createBrowserRouter([
                 element: <GaslessPaymentPage />,
             },
         ],
+    },
+    // Standalone publisher demo page (outside main layout)
+    {
+        path: "/demo",
+        element: <TestPage />,
     },
 ]);

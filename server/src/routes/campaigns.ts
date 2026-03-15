@@ -1,7 +1,10 @@
 import { Router, type IRouter } from "express";
 import prisma from "../db/index.js";
 import pkg from "@prisma/client";
-import type { AdType as AdTypeT, CampaignStatus as CampaignStatusT } from "@prisma/client";
+import type {
+  AdType as AdTypeT,
+  CampaignStatus as CampaignStatusT,
+} from "@prisma/client";
 const { AdType, CampaignStatus } = pkg;
 import {
   x402,
@@ -230,6 +233,34 @@ router.post("/:id/pause", async (req, res) => {
   } catch (error) {
     console.error("Error pausing campaign:", error);
     return res.status(500).json({ error: "Failed to pause campaign" });
+  }
+});
+
+// Delete campaign (only DRAFT campaigns)
+router.delete("/:id", async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const campaign = await prisma.campaign.findUnique({ where: { id } });
+
+    if (!campaign) {
+      return res.status(404).json({ error: "Campaign not found" });
+    }
+
+    // Only allow deleting DRAFT campaigns
+    if (campaign.status !== CampaignStatus.DRAFT) {
+      return res.status(400).json({
+        error:
+          "Only DRAFT campaigns can be deleted. Active campaigns must be paused first.",
+      });
+    }
+
+    await prisma.campaign.delete({ where: { id } });
+
+    return res.json({ success: true, message: "Campaign deleted" });
+  } catch (error) {
+    console.error("Error deleting campaign:", error);
+    return res.status(500).json({ error: "Failed to delete campaign" });
   }
 });
 

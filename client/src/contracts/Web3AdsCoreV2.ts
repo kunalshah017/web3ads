@@ -189,6 +189,13 @@ export const WEB3ADS_CORE_V2_ABI = [
   },
   {
     type: "function",
+    name: "withdrawCampaignBudget",
+    inputs: [{ name: "campaignId", type: "bytes32" }],
+    outputs: [],
+    stateMutability: "nonpayable",
+  },
+  {
+    type: "function",
     name: "withdrawPublisher",
     inputs: [],
     outputs: [],

@@ -6,6 +6,8 @@ import {
   useBalance,
 } from "wagmi";
 import { parseEther, keccak256, toHex, formatEther } from "viem";
+import { readContract } from "wagmi/actions";
+import { config } from "../config/wagmi";
 import {
   WEB3ADS_CORE_V2_ABI,
   CPM_RATES_ETH,
@@ -168,6 +170,43 @@ export function usePauseCampaignV2() {
 }
 
 /**
+ * Hook to withdraw remaining budget from a paused campaign
+ */
+export function useWithdrawCampaignBudgetV2() {
+  const { chainId } = useAccount();
+  const contractAddress = getV2ContractAddress(chainId);
+
+  const { writeContract, data: hash, isPending, error } = useWriteContract();
+
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  const withdrawBudget = useCallback(
+    (campaignId: `0x${string}`) => {
+      if (!contractAddress) return;
+
+      writeContract({
+        address: contractAddress,
+        abi: WEB3ADS_CORE_V2_ABI,
+        functionName: "withdrawCampaignBudget",
+        args: [campaignId],
+      });
+    },
+    [writeContract, contractAddress],
+  );
+
+  return {
+    withdrawBudget,
+    isPending,
+    isConfirming,
+    isSuccess,
+    error,
+    hash,
+  };
+}
+
+/**
  * Hook to get campaign details from V2 contract
  */
 export function useCampaignV2(
@@ -249,11 +288,16 @@ export function useViewerBalanceV2(commitment: `0x${string}` | undefined) {
 }
 
 /**
- * Generate a unique campaign ID from name and timestamp
+ * Generate a unique campaign ID from name
+ * IMPORTANT: Must be deterministic so same name = same ID
+ * This allows us to reference the same campaign across sessions
  */
-export function generateCampaignId(name: string): `0x${string}` {
-  const timestamp = Date.now();
-  const input = `${name}-${timestamp}-${Math.random().toString(36).slice(2)}`;
+export function generateCampaignId(
+  name: string,
+  walletAddress?: string,
+): `0x${string}` {
+  // Use wallet address + name for uniqueness, but deterministic
+  const input = `${walletAddress || "0x"}-${name}`.toLowerCase();
   return keccak256(toHex(input));
 }
 
@@ -278,5 +322,47 @@ export function calculateImpressions(
  */
 export function ethToUsd(ethAmount: string | number): string {
   const eth = typeof ethAmount === "string" ? parseFloat(ethAmount) : ethAmount;
+  if (isNaN(eth) || !eth) return "0.00";
   return (eth * 2000).toFixed(2);
+}
+
+/**
+ * Check if a campaign already exists on the blockchain
+ * Returns campaign data if exists, null otherwise
+ */
+export async function checkCampaignExists(
+  chainId: number,
+  advertiser: `0x${string}`,
+  campaignId: `0x${string}`,
+): Promise<{
+  exists: boolean;
+  status: number;
+  budget: bigint;
+} | null> {
+  const contractAddress = getV2ContractAddress(chainId);
+  if (!contractAddress) return null;
+
+  try {
+    const data = await readContract(config, {
+      address: contractAddress,
+      abi: WEB3ADS_CORE_V2_ABI,
+      functionName: "campaigns",
+      args: [advertiser, campaignId],
+    });
+
+    // data[6] is createdAt - if it's 0, campaign doesn't exist
+    const createdAt = data[6];
+    if (createdAt === 0n) {
+      return { exists: false, status: 0, budget: 0n };
+    }
+
+    return {
+      exists: true,
+      status: Number(data[5]), // status
+      budget: data[3], // budget
+    };
+  } catch (err) {
+    console.error("Error checking campaign:", err);
+    return null;
+  }
 }

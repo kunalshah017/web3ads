@@ -152,7 +152,63 @@ export async function recordImpressionOnChain(params: {
 }
 
 /**
- * Get publisher balance from contract
+ * Record impression on V2 contract (ETH-based)
+ * This submits the transaction to the blockchain
+ */
+export async function recordImpressionOnChainV2(params: {
+  advertiser: `0x${string}`;
+  campaignId: `0x${string}`;
+  publisher: `0x${string}`;
+  viewerCommitment: `0x${string}`;
+  nullifier: `0x${string}`;
+}): Promise<Hash | null> {
+  if (!signerAccount || !WEB3ADS_CORE_V2_ADDRESS) {
+    console.warn("[Blockchain] Cannot record on-chain V2 - not configured");
+    return null;
+  }
+
+  try {
+    const signature = await signImpression(params);
+    if (!signature) return null;
+
+    const { advertiser, campaignId, publisher, viewerCommitment, nullifier } =
+      params;
+
+    // Create wallet client on-demand
+    const walletClient = createWalletClient({
+      account: signerAccount,
+      chain: baseSepolia,
+      transport: http(BASE_SEPOLIA_RPC_URL),
+    });
+
+    const hash = await walletClient.writeContract({
+      address: WEB3ADS_CORE_V2_ADDRESS,
+      abi: WEB3ADS_CORE_V2_ABI,
+      functionName: "recordImpression",
+      args: [
+        advertiser,
+        campaignId,
+        publisher,
+        viewerCommitment,
+        nullifier,
+        signature,
+      ],
+      chain: baseSepolia,
+    });
+
+    console.log(`[Blockchain] Impression recorded on-chain V2: ${hash}`);
+    return hash;
+  } catch (error) {
+    console.error(
+      "[Blockchain] Failed to record impression on-chain V2:",
+      error,
+    );
+    return null;
+  }
+}
+
+/**
+ * Get publisher balance from contract (V1)
  */
 export async function getPublisherBalanceOnChain(
   publisher: `0x${string}`,
@@ -175,6 +231,37 @@ export async function getPublisherBalanceOnChain(
     return balance as bigint;
   } catch (error) {
     console.error("[Blockchain] Failed to get publisher balance:", error);
+    return null;
+  }
+}
+
+/**
+ * Get publisher balance from V2 contract (ETH-based)
+ */
+export async function getPublisherBalanceOnChainV2(
+  publisher: `0x${string}`,
+): Promise<bigint | null> {
+  if (!WEB3ADS_CORE_V2_ADDRESS) return null;
+
+  try {
+    const publicClient = createPublicClient({
+      chain: baseSepolia,
+      transport: http(BASE_SEPOLIA_RPC_URL),
+    });
+
+    const balance = await publicClient.readContract({
+      address: WEB3ADS_CORE_V2_ADDRESS,
+      abi: WEB3ADS_CORE_V2_ABI,
+      functionName: "getPublisherBalance",
+      args: [publisher],
+    });
+
+    console.log(
+      `[Blockchain] Publisher ${publisher} on-chain balance: ${balance} wei`,
+    );
+    return balance as bigint;
+  } catch (error) {
+    console.error("[Blockchain] Failed to get publisher V2 balance:", error);
     return null;
   }
 }

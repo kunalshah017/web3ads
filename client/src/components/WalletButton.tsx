@@ -65,7 +65,7 @@ export function WalletButton() {
                                         className="border-4 border-[#ff3e00] bg-black px-4 py-3 font-mono text-xs font-bold uppercase tracking-wider text-white transition-all hover:bg-[#ff3e00]"
                                     >
                                         {account.displayName}
-                                        {account.displayBalance && ` | ${account.displayBalance}`}
+                                        {account.displayBalance && !account.displayBalance.includes("NaN") && ` | ${account.displayBalance}`}
                                     </button>
                                 </div>
                             );
