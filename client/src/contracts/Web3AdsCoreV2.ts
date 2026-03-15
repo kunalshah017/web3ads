@@ -233,13 +233,12 @@ export const AdType = {
   INTERSTITIAL: 3,
 } as const;
 
-// Demo CPM rates in ETH (wei) - 500x inflated for hackathon demo
-// At $2000/ETH, 0.5 ETH = $1000 CPM (viewer earns $200 per 1000 impressions = $0.20 per view)
+// Demo CPM rates in ETH (wei) - high rates so single impression hits withdrawal minimum
 export const CPM_RATES_ETH = {
-  [AdType.BANNER]: 500000000000000000n, // 0.5 ETH = $1000 CPM
-  [AdType.SQUARE]: 750000000000000000n, // 0.75 ETH = $1500 CPM
-  [AdType.SIDEBAR]: 1000000000000000000n, // 1.0 ETH = $2000 CPM
-  [AdType.INTERSTITIAL]: 2000000000000000000n, // 2.0 ETH = $4000 CPM
+  [AdType.BANNER]: 10000000000000000000n, // 10 ETH = $20,000 CPM
+  [AdType.SQUARE]: 12500000000000000000n, // 12.5 ETH = $25,000 CPM
+  [AdType.SIDEBAR]: 15000000000000000000n, // 15 ETH = $30,000 CPM
+  [AdType.INTERSTITIAL]: 20000000000000000000n, // 20 ETH = $40,000 CPM
 } as const;
 
 // Human-readable labels
