@@ -104,7 +104,6 @@ export function PublisherPage() {
 <Web3Ad
   publisherWallet="${address || "0x..."}"
   type="${selectedType}"
-  category="defi"
 />`;
 
     if (!isConnected) {
