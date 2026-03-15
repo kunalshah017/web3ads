@@ -3,7 +3,7 @@ import { useAccount } from "wagmi";
 import { isAddress } from "viem";
 import { WalletButton } from "../components/WalletButton";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+const API_URL = import.meta.env.VITE_API_URL || "https://api.web3ads.wtf";
 
 interface BalanceData {
     publisher: { pending: number; claimed: number; total: number } | null;

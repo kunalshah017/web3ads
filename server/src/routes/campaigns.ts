@@ -135,12 +135,12 @@ router.post("/", async (req, res) => {
       create: { userId: user.id },
     });
 
-    // Default CPM rates by ad type
+    // Demo rates: high CPM so a few impressions hit $10 withdrawal minimum
     const defaultCpmRates: Record<AdTypeT, number> = {
-      BANNER: 2,
-      SQUARE: 3,
-      SIDEBAR: 4,
-      INTERSTITIAL: 8,
+      BANNER: 20000,
+      SQUARE: 25000,
+      SIDEBAR: 30000,
+      INTERSTITIAL: 40000,
     };
 
     const campaign = await prisma.campaign.create({

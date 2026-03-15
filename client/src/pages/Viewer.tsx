@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
 import { Identity } from "@semaphore-protocol/core";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3001";
+const API_URL = import.meta.env.VITE_API_URL || "https://api.web3ads.wtf";
 const IDENTITY_STORAGE_KEY = "web3ads_semaphore_identity";
 // Demo mode: 1 wei minimum (essentially no minimum for hackathon)
 const MIN_WITHDRAWAL = 0.000000000000000001; // 1 wei in ETH
